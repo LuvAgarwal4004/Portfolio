@@ -361,28 +361,34 @@ function makeTorch(scene) {
   group.position.set(0, -0.48, -0.78);
 
   const metal = new THREE.MeshStandardMaterial({
-    color: 0x33363a,
-    metalness: 0.88,
-    roughness: 0.24,
+    color: 0x555b62,
+    metalness: 0.82,
+    roughness: 0.3,
   });
-  const darkMetal = new THREE.MeshStandardMaterial({
-    color: 0x101216,
-    metalness: 0.72,
-    roughness: 0.35,
-  });
-  const rubber = new THREE.MeshStandardMaterial({
-    color: 0x090b0e,
-    roughness: 0.96,
-  });
-  const glass = new THREE.MeshStandardMaterial({
-    color: 0xffdf9e,
-    emissive: 0xffbb60,
-    emissiveIntensity: 2.8,
-    metalness: 0.35,
-    roughness: 0.12,
-  });
-  const glove = new THREE.MeshStandardMaterial({ color: 0x171519, roughness: 0.98 });
 
+  const darkMetal = new THREE.MeshStandardMaterial({
+    color: 0x252a30,
+    metalness: 0.68,
+    roughness: 0.36,
+  });
+
+  const rubber = new THREE.MeshStandardMaterial({
+    color: 0x222327,
+    roughness: 0.85,
+  });
+
+  const glass = new THREE.MeshStandardMaterial({
+    color: 0xffe6b8,
+    emissive: 0xffcc75,
+    emissiveIntensity: 4.5,
+    metalness: 0.2,
+    roughness: 0.1,
+  });
+
+  const glove = new THREE.MeshStandardMaterial({
+    color: 0x29252a,
+    roughness: 0.9,
+  });
   const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.14, 1.22, 24), rubber);
   handle.position.y = 0.66;
   handle.castShadow = true;
@@ -440,21 +446,23 @@ function makeTorch(scene) {
 
 function makeGun(scene) {
   const group = new THREE.Group();
-  group.visible = false;
+  group.visible = true;
 
   const steel = new THREE.MeshStandardMaterial({
-    color: 0x343a40,
-    metalness: 0.92,
-    roughness: 0.22,
+    color: 0x59616b,
+    metalness: 0.86,
+    roughness: 0.28,
   });
+
   const darkSteel = new THREE.MeshStandardMaterial({
-    color: 0x11151a,
-    metalness: 0.78,
-    roughness: 0.3,
+    color: 0x272b31,
+    metalness: 0.72,
+    roughness: 0.35,
   });
+
   const gripMat = new THREE.MeshStandardMaterial({
-    color: 0x17120f,
-    roughness: 0.94,
+    color: 0x29221d,
+    roughness: 0.88,
   });
 
   const slide = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.88, 0.25), steel);
@@ -647,7 +655,7 @@ export default function Home() {
 
     const torch = makeTorch(scene);
     const torchBase = torch.group.position.clone();
-    const torchSpot = new THREE.SpotLight(0xffdfae, 115, 18, 0.43, 0.82, 1.45);
+    const torchSpot = new THREE.SpotLight(0xffdfae, 115, 18, 0.215, 0.82, 1.45);
     torchSpot.castShadow = true;
     torchSpot.shadow.mapSize.set(1024, 1024);
     torchSpot.shadow.bias = -0.00015;
@@ -655,7 +663,7 @@ export default function Home() {
     scene.add(torchSpot);
     scene.add(torchSpot.target);
 
-    const beamGeometry = new THREE.CylinderGeometry(1.8, 0.035, 1, 32, 1, true);
+    const beamGeometry = new THREE.CylinderGeometry(0.9, 0.035, 1, 24, 1, true);
     beamGeometry.translate(0, 0.5, 0);
     const beamMaterial = new THREE.MeshBasicMaterial({
       color: 0xffdca3,
@@ -670,7 +678,7 @@ export default function Home() {
     scene.add(beam);
 
     const softBeam = new THREE.Mesh(
-      new THREE.CylinderGeometry(2.3, 0.075, 1, 32, 1, true),
+      new THREE.CylinderGeometry(1.15, 0.075, 1, 24, 1, true),
       new THREE.MeshBasicMaterial({
         color: 0xffdca3,
         transparent: true,
@@ -724,8 +732,8 @@ export default function Home() {
     // -----------------------------------------------
 
     const gun = makeGun(scene);
-    const gunStart = new THREE.Vector3(2.0, -1.05, -1.0);
-    const gunReady = new THREE.Vector3(0.72, -0.50, -1.15);
+    const gunStart = new THREE.Vector3(0.75, -0.62, -1.05);
+    const gunReady = new THREE.Vector3(0.75, -0.62, -1.05);
     const gunState = {
       phase: "idle",
       startTime: 0,
@@ -743,7 +751,7 @@ export default function Home() {
     const debris = [];
     const bats = [];
     let navigated = false;
-
+    let transitionStarted = false;
     function createBullet(start, end) {
       const bulletMaterial = new THREE.MeshStandardMaterial({
         color: 0xffd08a,
@@ -892,8 +900,15 @@ export default function Home() {
     }
 
     function beginShot(card) {
-      if (gunState.phase !== "idle" || bats.length > 0 || card.broken || navigated) return;
+      if (
+        transitionStarted ||
+        gunState.phase !== "idle" ||
+        bats.length > 0 ||
+        card.broken ||
+        navigated
+      ) return;
 
+      transitionStarted = true;
       const target = card.group.getWorldPosition(new THREE.Vector3());
       const direction = target.clone().sub(gunReady).normalize();
       const aimQuaternion = new THREE.Quaternion().setFromUnitVectors(UP, direction);
@@ -1019,39 +1034,84 @@ export default function Home() {
         const bat = bats[i];
         bat.age += delta;
 
-        const flap = Math.sin(bat.age * 19) * 0.78;
+        const flap = Math.sin(bat.age * 38) * 1.05;
         bat.leftWing.rotation.z = flap;
         bat.rightWing.rotation.z = -flap;
 
         if (bat.hero) {
-          const progress = clamp(bat.age / 2.05);
-          const destination = new THREE.Vector3(0, 0, -0.38);
-          bat.group.position.lerpVectors(bat.start, destination, smoothstep(progress));
-          bat.group.scale.setScalar(0.42 + progress * 3.65);
+          const progress = clamp(bat.age / 0.26);
+          const eased = smoothstep(progress);
+
+          const destination = new THREE.Vector3(
+            (Math.random() - 0.5) * 0.08,
+            (Math.random() - 0.5) * 0.08,
+            -0.38
+          );
+
+          bat.group.position.lerpVectors(
+            bat.start,
+            destination,
+            eased
+          );
+
+          bat.group.scale.setScalar(0.42 + progress * 8.0);
 
           if (overlayRef.current) {
-            overlayRef.current.style.opacity = String(clamp((progress - 0.72) / 0.28) * 0.88);
+            overlayRef.current.style.opacity = String(
+              clamp((progress - 0.35) / 0.65)
+            );
           }
 
           if (progress >= 1 && !navigated) {
             navigated = true;
+
             const destinationRoute = gunState.card?.href || "/";
+
+            // Reset transition state before navigation.
+            if (overlayRef.current) {
+              overlayRef.current.style.opacity = "0";
+            }
+
             router.push(destinationRoute);
           }
         } else {
-          bat.group.position.addScaledVector(bat.velocity, delta);
-          bat.group.rotation.z += Math.sin(bat.age * 5) * delta * 0.22;
-          bat.group.scale.setScalar(bat.baseScale * (1 + Math.sin(bat.age * 8) * 0.08));
+          // Faster and more unpredictable bat movement.
+          bat.velocity.x += (Math.random() - 0.5) * 18 * delta;
+          bat.velocity.y += (Math.random() - 0.5) * 18 * delta;
+          bat.velocity.z += (Math.random() - 0.5) * 8 * delta;
 
-          if (bat.age > 3.0) {
+          bat.velocity.clampLength(0, 18);
+
+          bat.group.position.addScaledVector(bat.velocity, delta * 8);
+
+          bat.group.rotation.z +=
+            Math.sin(bat.age * 18) * delta * 1.2;
+
+          bat.group.rotation.x =
+            Math.sin(bat.age * 14) * 0.25;
+
+          bat.group.rotation.y =
+            Math.cos(bat.age * 12) * 0.25;
+
+          bat.group.scale.setScalar(
+            bat.baseScale * (1 + Math.sin(bat.age * 24) * 0.16)
+          );
+
+          if (bat.age > 0.7) {
             scene.remove(bat.group);
+
             bat.group.traverse((object) => {
               if (object.isMesh) {
                 object.geometry.dispose();
-                if (Array.isArray(object.material)) object.material.forEach((m) => m.dispose());
-                else object.material.dispose();
+
+                if (Array.isArray(object.material)) {
+                  object.material.forEach((m) => m.dispose());
+                } else {
+                  object.material.dispose();
+                }
               }
             });
+
             bats.splice(i, 1);
           }
         }
@@ -1171,7 +1231,9 @@ export default function Home() {
           else object.material?.dispose();
         }
       });
-
+      if (overlayRef.current) {
+        overlayRef.current.style.opacity = "0";
+      }
       renderer.dispose();
       renderer.domElement.remove();
     };
