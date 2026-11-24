@@ -1264,7 +1264,7 @@ export default function Home() {
 
       {/* HUD */}
 
-      <header className="scene-header">
+      {/* <header className="scene-header">
         <Link href="/" className="brand-mark">
           <span className="brand-symbol">L.</span>
           <span className="brand-name">THE UNKNOWN ROOM</span>
@@ -1272,25 +1272,25 @@ export default function Home() {
 
         <div className="header-status">
           <span className="status-light" />
-          <span>ENVIRONMENT ACTIVE</span>
+          <span></span>
         </div>
-      </header>
+      </header> */}
 
       {/* INTRODUCTION */}
 
       <section className="scene-intro">
         <span className="intro-eyebrow">
-          AN INTERACTIVE EXPERIENCE
+          HEHEHEHEHEHEHHEEHHEHEHEHEHEEHE
         </span>
 
         <h1>
-          Find your way
+          FAIZANNN TERI MAA KA BHOSDAAAAAAA
           <br />
-          <span>through the dark.</span>
+          <span>AAAGGGGGGGGGGGGG</span>
         </h1>
 
         <p>
-          Move your light around. There&apos;s more here than meets the eye.
+          NIGGAAAAA MOOOOOOO-
         </p>
       </section>
 
@@ -1300,13 +1300,13 @@ export default function Home() {
         <span className="instruction-icon">✣</span>
 
         <span>
-          MOVE YOUR LIGHT TO EXPLORE
+          MOVE YOUR LIGHT TO KNOW MORE ABOUT ME
         </span>
       </div>
 
       <footer className="scene-footer">
-        <span>PORTFOLIO / INTERACTIVE ARCHIVE</span>
-        <span>KEEP LOOKING.</span>
+        <span>MY PORTFOLIO...hehehe</span>
+        <span>I like horror HEHEHEHE</span>
       </footer>
 
       {/* ==========================================
