@@ -1,2696 +1,1309 @@
-
 "use client";
 
 import { useEffect, useRef } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import * as THREE from "three";
 
-const TORCH_LENGTH = 193;
-
-const portfolioItems = [
-  {
-    id: "about",
-    href: "/about",
-    kind: "about",
-    code: "IDENTITY / 001",
-    title: "Behind the screen.",
-    description: "A little about the person building things.",
-    action: "GET TO KNOW ME",
-  },
-  {
-    id: "projects",
-    href: "/projects",
-    kind: "projects",
-    code: "CASE FILES / 002",
-    title: "Things I've built.",
-    description: "Experiments, products and projects.",
-    action: "EXPLORE PROJECTS",
-  },
-  {
-    id: "skills",
-    href: "/skills",
-    kind: "skills",
-    code: "TOOLS / 003",
-    title: "My toolkit.",
-    description: "Technologies, tools and things I work with.",
-    action: "VIEW MY SKILLS",
-  },
-  {
-    id: "experience",
-    href: "/experience",
-    kind: "experience",
-    code: "FIELD NOTES / 004",
-    title: "The journey.",
-    description: "My experience, learning and milestones.",
-    action: "FOLLOW THE TRAIL",
-  },
-  {
-    id: "contact",
-    href: "/contact",
-    kind: "contact",
-    code: "TRANSMISSION / 005",
-    title: "Let's talk.",
-    description: "Have something interesting in mind?",
-    action: "GET IN TOUCH",
-  },
+const ITEMS = [
+  { id: "about", href: "/about", kind: "about", code: "IDENTITY / 001", title: "Behind the screen.", description: "A little about the person building things.", action: "GET TO KNOW ME", position: [-5.25, 1.05, -8.7], size: [2.35, 2.9], angle: -0.035 },
+  { id: "projects", href: "/projects", kind: "projects", code: "CASE FILES / 002", title: "Things I've built.", description: "Experiments, products and projects.", action: "EXPLORE PROJECTS", position: [0, 1.45, -8.65], size: [3.35, 2.55], angle: 0.025 },
+  { id: "skills", href: "/skills", kind: "skills", code: "TOOLS / 003", title: "My toolkit.", description: "Technologies, tools and things I work with.", action: "VIEW MY SKILLS", position: [5.2, 0.95, -8.7], size: [2.45, 2.75], angle: 0.035 },
+  { id: "experience", href: "/experience", kind: "experience", code: "FIELD NOTES / 004", title: "The journey.", description: "My experience, learning and milestones.", action: "FOLLOW THE TRAIL", position: [-3.05, -2.25, -8.65], size: [3.05, 2.05], angle: -0.02 },
+  { id: "contact", href: "/contact", kind: "contact", code: "TRANSMISSION / 005", title: "Let's talk.", description: "Have something interesting in mind?", action: "GET IN TOUCH", position: [3.15, -2.35, -8.65], size: [2.75, 2.05], angle: 0.025 },
 ];
 
-// The same geometry is used for both the physical torch
-// and the Canvas flashlight beam.
-function calculateTorchPose(x, y, width, height) {
-  const pivotX = width / 2;
-  const pivotY = height + 26;
+const UP = new THREE.Vector3(0, 1, 0);
+const WALL_Z = -10;
 
-  const dx = x - pivotX;
-  const dy = y - pivotY;
+function clamp(value, min = 0, max = 1) {
+  return Math.max(min, Math.min(max, value));
+}
 
-  const distance = Math.max(0.001, Math.hypot(dx, dy));
+function smoothstep(value) {
+  const t = clamp(value);
+  return t * t * (3 - 2 * t);
+}
 
-  const directionX = dx / distance;
-  const directionY = dy / distance;
+function makeWallTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 2048;
+  canvas.height = 1024;
+  const ctx = canvas.getContext("2d");
 
-  // An upright torch points toward the top of the screen.
-  // Rotate it to the exact direction of the pointer.
-  const angle =
-    (Math.atan2(dy, dx) * 180) / Math.PI + 90;
+  ctx.fillStyle = "#9f9178";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // The torch shortens slightly when pointed very close
-  // to its pivot, keeping its lens behind the target.
-  const torchScale = Math.min(
-    1,
-    Math.max(0.001, (distance - 5) / TORCH_LENGTH)
-  );
+  const base = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  base.addColorStop(0, "#bdb098");
+  base.addColorStop(0.52, "#a99a80");
+  base.addColorStop(1, "#81735f");
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const lensDistance = TORCH_LENGTH * torchScale;
+  const stains = [
+    [170, 230, 0.8],
+    [1810, 190, 0.75],
+    [430, 850, 0.55],
+    [1570, 790, 0.85],
+    [1040, 130, 0.42],
+    [1190, 920, 0.5],
+  ];
 
-  const originX = pivotX + directionX * lensDistance;
-  const originY = pivotY + directionY * lensDistance;
+  // Uneven plaster grain.
+  for (let i = 0; i < 26000; i++) {
+    const x = Math.random() * canvas.width;
+    const y = Math.random() * canvas.height;
+    const alpha = Math.random() * 0.075;
+    ctx.fillStyle = Math.random() > 0.5
+      ? `rgba(45,35,25,${alpha})`
+      : `rgba(255,239,211,${alpha})`;
+    ctx.fillRect(x, y, Math.random() * 3 + 0.5, Math.random() * 2 + 0.5);
+  }
+
+  // Fine cracks in the plaster.
+  ctx.lineWidth = 1.3;
+  for (let i = 0; i < 24; i++) {
+    let x = Math.random() * canvas.width;
+    let y = Math.random() * canvas.height;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    for (let j = 0; j < 5; j++) {
+      x += (Math.random() - 0.5) * 45;
+      y += Math.random() * 28;
+      ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = "rgba(42,31,22,0.18)";
+    ctx.stroke();
+  }
+
+  // Stylized dried blood: irregular dark stains, splatter and short drips.
+  for (const [cx, cy, scale] of stains) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(scale, scale);
+
+    const blob = ctx.createRadialGradient(0, 0, 8, 0, 0, 100);
+    blob.addColorStop(0, "rgba(43,5,10,0.78)");
+    blob.addColorStop(0.48, "rgba(66,8,15,0.58)");
+    blob.addColorStop(0.78, "rgba(75,12,16,0.24)");
+    blob.addColorStop(1, "rgba(70,10,13,0)");
+    ctx.fillStyle = blob;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 105, 62, Math.random() * 0.7, 0, Math.PI * 2);
+    ctx.fill();
+
+    for (let i = 0; i < 34; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 28 + Math.random() * 100;
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius * 0.62;
+      const r = 2 + Math.random() * 7;
+      ctx.fillStyle = `rgba(57,5,11,${0.3 + Math.random() * 0.5})`;
+      ctx.beginPath();
+      ctx.ellipse(x, y, r, r * (0.55 + Math.random()), Math.random(), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    for (let i = 0; i < 3; i++) {
+      const x = (Math.random() - 0.5) * 85;
+      const y = 18 + Math.random() * 15;
+      const length = 35 + Math.random() * 90;
+      const drip = ctx.createLinearGradient(x, y, x, y + length);
+      drip.addColorStop(0, "rgba(58,5,10,0.72)");
+      drip.addColorStop(1, "rgba(58,5,10,0.02)");
+      ctx.strokeStyle = drip;
+      ctx.lineWidth = 3 + Math.random() * 5;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.bezierCurveTo(x - 5, y + length * 0.3, x + 5, y + length * 0.7, x, y + length);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  return texture;
+}
+
+function makeCardTexture(item) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1000;
+  canvas.height = 760;
+  const ctx = canvas.getContext("2d");
+
+  const palettes = {
+    about: ["#d7c7a9", "#786b55", "#292820"],
+    projects: ["#242a29", "#a58f6b", "#d8c6a5"],
+    skills: ["#cabb9c", "#6f604b", "#382f24"],
+    experience: ["#dfd1b8", "#8e7958", "#43392d"],
+    contact: ["#e2d5bf", "#907b5d", "#4b3d2c"],
+  };
+
+  const [background, accent, ink] = palettes[item.kind];
+  ctx.fillStyle = background;
+  ctx.fillRect(0, 0, 1000, 760);
+
+  const wash = ctx.createLinearGradient(0, 0, 1000, 760);
+  wash.addColorStop(0, "rgba(255,255,255,.13)");
+  wash.addColorStop(1, "rgba(0,0,0,.13)");
+  ctx.fillStyle = wash;
+  ctx.fillRect(0, 0, 1000, 760);
+
+  // Paper grain.
+  for (let i = 0; i < 4500; i++) {
+    ctx.fillStyle = Math.random() > 0.5
+      ? "rgba(255,255,255,.035)"
+      : "rgba(0,0,0,.035)";
+    ctx.fillRect(Math.random() * 1000, Math.random() * 760, 2, 2);
+  }
+
+  ctx.strokeStyle = `${ink}88`;
+  ctx.lineWidth = 3;
+  ctx.strokeRect(24, 24, 952, 712);
+
+  ctx.fillStyle = ink;
+  ctx.font = "22px monospace";
+  ctx.letterSpacing = "5px";
+  ctx.fillText(item.code, 58, 78);
+  ctx.textAlign = "right";
+  ctx.fillText("ARCHIVE / 0" + (ITEMS.findIndex((entry) => entry.id === item.id) + 1), 942, 78);
+  ctx.textAlign = "left";
+
+  ctx.strokeStyle = `${ink}66`;
+  ctx.beginPath();
+  ctx.moveTo(58, 105);
+  ctx.lineTo(942, 105);
+  ctx.stroke();
+
+  if (item.kind === "about") {
+    const g = ctx.createRadialGradient(500, 330, 20, 500, 330, 255);
+    g.addColorStop(0, "#e9d3aa");
+    g.addColorStop(1, "#625744");
+    ctx.fillStyle = g;
+    ctx.fillRect(80, 140, 840, 330);
+    ctx.fillStyle = "#292720";
+    ctx.beginPath();
+    ctx.arc(500, 265, 90, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(500, 440, 180, 150, 0, Math.PI, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,235,199,.6)";
+    ctx.fillRect(125, 170, 120, 220);
+    ctx.fillStyle = ink;
+    ctx.font = "italic 64px Georgia";
+    ctx.fillText("A person behind the pixels.", 62, 575);
+  } else if (item.kind === "projects") {
+    ctx.fillStyle = "#101617";
+    ctx.fillRect(90, 150, 820, 320);
+    for (let i = 0; i < 3; i++) {
+      const x = 125 + i * 260;
+      ctx.fillStyle = ["#7b8b7e", "#a58a66", "#596c72"][i];
+      ctx.fillRect(x, 190, 220, 225);
+      ctx.fillStyle = "rgba(15,18,18,.75)";
+      ctx.fillRect(x + 15, 208, 190, 22);
+      ctx.fillStyle = "rgba(236,220,190,.8)";
+      for (let j = 0; j < 4; j++) ctx.fillRect(x + 18, 255 + j * 32, 150 + Math.random() * 28, 7);
+    }
+    ctx.fillStyle = "#e8dcc6";
+    ctx.font = "italic 66px Georgia";
+    ctx.fillText("Selected experiments.", 62, 575);
+  } else if (item.kind === "skills") {
+    ctx.fillStyle = `${accent}55`;
+    ctx.fillRect(85, 150, 830, 320);
+    const tags = ["REACT", "NEXT.JS", "NODE.JS", "MONGODB", "THREE.JS", "AI / ML", "UI / UX", "EXPRESS"];
+    tags.forEach((tag, i) => {
+      const x = 115 + (i % 4) * 195;
+      const y = 205 + Math.floor(i / 4) * 125;
+      ctx.strokeStyle = ink;
+      ctx.strokeRect(x, y, 165, 72);
+      ctx.fillStyle = ink;
+      ctx.font = "bold 24px monospace";
+      ctx.fillText(tag, x + 18, y + 44);
+    });
+    ctx.fillStyle = ink;
+    ctx.font = "italic 66px Georgia";
+    ctx.fillText("Tools of the trade.", 62, 575);
+  } else if (item.kind === "experience") {
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.moveTo(160, 190);
+    ctx.lineTo(160, 450);
+    ctx.stroke();
+    [210, 330, 445].forEach((y, i) => {
+      ctx.fillStyle = accent;
+      ctx.beginPath();
+      ctx.arc(160, y, 15, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = ink;
+      ctx.font = "bold 27px monospace";
+      ctx.fillText(["THE BEGINNING", "BUILDING THINGS", "WHAT'S NEXT?"][i], 210, y + 8);
+      ctx.font = "22px Georgia";
+      ctx.fillText(["Ideas & curiosity", "Projects & experiments", "The story continues"][i], 210, y + 42);
+    });
+    ctx.fillStyle = ink;
+    ctx.font = "italic 66px Georgia";
+    ctx.fillText("Field notes.", 62, 575);
+  } else {
+    ctx.fillStyle = "#b49e7d";
+    ctx.fillRect(325, 205, 350, 220);
+    ctx.strokeStyle = "#564630";
+    ctx.lineWidth = 5;
+    ctx.strokeRect(325, 205, 350, 220);
+    ctx.beginPath();
+    ctx.moveTo(325, 205);
+    ctx.lineTo(500, 350);
+    ctx.lineTo(675, 205);
+    ctx.stroke();
+    ctx.fillStyle = ink;
+    ctx.font = "italic 66px Georgia";
+    ctx.fillText("Leave a message.", 62, 575);
+  }
+
+  ctx.fillStyle = ink;
+  ctx.font = "20px monospace";
+  ctx.fillText(item.description.toUpperCase(), 62, 685);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  return texture;
+}
+
+function makeBat(scene, position, hero = false) {
+  const root = new THREE.Group();
+  root.position.copy(position);
+  root.renderOrder = 10;
+
+  const bodyMat = new THREE.MeshStandardMaterial({
+    color: 0x09090d,
+    roughness: 0.9,
+    metalness: 0.05,
+  });
+  const wingMat = new THREE.MeshStandardMaterial({
+    color: 0x111016,
+    roughness: 0.95,
+    side: THREE.DoubleSide,
+  });
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x8b111a });
+
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), bodyMat);
+  body.scale.set(0.75, 1.25, 0.75);
+  root.add(body);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.085, 12, 10), bodyMat);
+  head.position.set(0, 0.12, 0.035);
+  root.add(head);
+
+  const earGeometry = new THREE.ConeGeometry(0.045, 0.16, 5);
+  const earL = new THREE.Mesh(earGeometry, bodyMat);
+  earL.position.set(-0.055, 0.235, 0.02);
+  earL.rotation.z = 0.22;
+  root.add(earL);
+  const earR = earL.clone();
+  earR.position.x = 0.055;
+  earR.rotation.z = -0.22;
+  root.add(earR);
+
+  for (const x of [-0.035, 0.035]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 8), eyeMat);
+    eye.position.set(x, 0.13, 0.105);
+    root.add(eye);
+  }
+
+  const wingShape = new THREE.Shape();
+  wingShape.moveTo(0, 0);
+  wingShape.lineTo(0.18, 0.12);
+  wingShape.lineTo(0.38, 0.31);
+  wingShape.quadraticCurveTo(0.48, 0.34, 0.62, 0.20);
+  wingShape.quadraticCurveTo(0.55, 0.12, 0.49, 0.03);
+  wingShape.quadraticCurveTo(0.41, 0.14, 0.34, -0.08);
+  wingShape.quadraticCurveTo(0.25, 0.06, 0.17, -0.13);
+  wingShape.quadraticCurveTo(0.09, -0.02, 0, 0);
+
+  const wingGeometry = new THREE.ShapeGeometry(wingShape, 8);
+  const leftWing = new THREE.Group();
+  leftWing.position.x = -0.055;
+  const leftMesh = new THREE.Mesh(wingGeometry, wingMat);
+  leftMesh.scale.x = -1;
+  leftWing.add(leftMesh);
+  root.add(leftWing);
+
+  const rightWing = new THREE.Group();
+  rightWing.position.x = 0.055;
+  rightWing.add(new THREE.Mesh(wingGeometry, wingMat));
+  root.add(rightWing);
+
+  scene.add(root);
 
   return {
-    angle,
-    torchScale,
-    pivotX,
-    pivotY,
-    directionX,
-    directionY,
-    originX,
-    originY,
+    group: root,
+    leftWing,
+    rightWing,
+    hero,
+    age: 0,
+    start: position.clone(),
+    velocity: new THREE.Vector3(
+      (Math.random() - 0.5) * 4,
+      (Math.random() - 0.35) * 3.5,
+      2.4 + Math.random() * 3.0
+    ),
+    baseScale: hero ? 0.42 : 0.22 + Math.random() * 0.22,
   };
 }
 
-export default function Home() {
-  const sceneRef = useRef(null);
-  const canvasRef = useRef(null);
-  const torchRef = useRef(null);
+function makeTorch(scene) {
+  const group = new THREE.Group();
+  group.position.set(0, -0.48, -0.78);
 
-  // There is NO interpolated position.
-  // These coordinates are the actual pointer coordinates.
-  const pointer = useRef({
-    x: 0,
-    y: 0,
-    initialized: false,
+  const metal = new THREE.MeshStandardMaterial({
+    color: 0x33363a,
+    metalness: 0.88,
+    roughness: 0.24,
+  });
+  const darkMetal = new THREE.MeshStandardMaterial({
+    color: 0x101216,
+    metalness: 0.72,
+    roughness: 0.35,
+  });
+  const rubber = new THREE.MeshStandardMaterial({
+    color: 0x090b0e,
+    roughness: 0.96,
+  });
+  const glass = new THREE.MeshStandardMaterial({
+    color: 0xffdf9e,
+    emissive: 0xffbb60,
+    emissiveIntensity: 2.8,
+    metalness: 0.35,
+    roughness: 0.12,
+  });
+  const glove = new THREE.MeshStandardMaterial({ color: 0x171519, roughness: 0.98 });
+
+  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.14, 1.22, 24), rubber);
+  handle.position.y = 0.66;
+  handle.castShadow = true;
+  group.add(handle);
+
+  const handleCore = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.145, 1.12, 24), metal);
+  handleCore.position.y = 0.68;
+  group.add(handleCore);
+
+  for (let i = 0; i < 8; i++) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.012, 6, 24), darkMetal);
+    ring.rotation.x = Math.PI / 2;
+    ring.position.y = 0.27 + i * 0.115;
+    group.add(ring);
+  }
+
+  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.205, 0.135, 0.34, 32), darkMetal);
+  head.position.y = 1.43;
+  head.castShadow = true;
+  group.add(head);
+
+  const bezel = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.10, 32), metal);
+  bezel.position.y = 1.64;
+  group.add(bezel);
+
+  const innerRing = new THREE.Mesh(new THREE.CylinderGeometry(0.175, 0.175, 0.035, 32), darkMetal);
+  innerRing.position.y = 1.70;
+  group.add(innerRing);
+
+  const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.018, 32), glass);
+  lens.position.y = 1.725;
+  group.add(lens);
+
+  // A 3D gloved hand gripping the near end of the torch.
+  const palm = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), glove);
+  palm.position.set(0, 0.22, 0.14);
+  palm.scale.set(0.92, 0.9, 0.9);
+  group.add(palm);
+
+  for (let i = 0; i < 4; i++) {
+    const finger = new THREE.Mesh(new THREE.CapsuleGeometry(0.047, 0.19, 4, 8), glove);
+    finger.position.set(-0.13 + i * 0.085, 0.55, 0.16);
+    finger.rotation.z = -0.13;
+    group.add(finger);
+  }
+
+  const thumb = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.24, 4, 8), glove);
+  thumb.position.set(-0.19, 0.74, 0.12);
+  thumb.rotation.z = -0.85;
+  group.add(thumb);
+
+  scene.add(group);
+  return { group, lensLocal: new THREE.Vector3(0, 1.735, 0) };
+}
+
+function makeGun(scene) {
+  const group = new THREE.Group();
+  group.visible = false;
+
+  const steel = new THREE.MeshStandardMaterial({
+    color: 0x343a40,
+    metalness: 0.92,
+    roughness: 0.22,
+  });
+  const darkSteel = new THREE.MeshStandardMaterial({
+    color: 0x11151a,
+    metalness: 0.78,
+    roughness: 0.3,
+  });
+  const gripMat = new THREE.MeshStandardMaterial({
+    color: 0x17120f,
+    roughness: 0.94,
   });
 
-  // --------------------------------------------------
-  // DIRECT POINTER TRACKING + TORCH ROTATION
-  // --------------------------------------------------
+  const slide = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.88, 0.25), steel);
+  slide.position.set(0, 0.86, 0);
+  group.add(slide);
 
-  const updatePointer = (event) => {
-    const scene = sceneRef.current;
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 1.12, 20), darkSteel);
+  barrel.position.set(0, 1.14, 0);
+  group.add(barrel);
 
-    if (!scene) return;
+  const muzzle = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.075, 24), steel);
+  muzzle.position.set(0, 1.49, 0);
+  group.add(muzzle);
 
-    const rect = scene.getBoundingClientRect();
+  const muzzleHole = new THREE.Mesh(new THREE.CylinderGeometry(0.073, 0.073, 0.078, 24), new THREE.MeshBasicMaterial({ color: 0x020304 }));
+  muzzleHole.position.set(0, 1.535, 0);
+  group.add(muzzleHole);
 
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+  const rearSight = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.11, 0.25), darkSteel);
+  rearSight.position.set(0, 1.34, 0);
+  group.add(rearSight);
 
-    pointer.current.x = x;
-    pointer.current.y = y;
-    pointer.current.initialized = true;
+  const frontSight = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.08, 0.23), steel);
+  frontSight.position.set(0, 1.49, 0);
+  group.add(frontSight);
 
-    // Both torch and spotlight receive the same coordinates.
-    const pose = calculateTorchPose(
-      x,
-      y,
-      rect.width,
-      rect.height
-    );
+  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.31, 0.63, 0.27), gripMat);
+  grip.position.set(-0.055, 0.12, 0);
+  grip.rotation.z = -0.16;
+  group.add(grip);
 
-    // Direct CSS update: NO transition, NO animation delay.
-    const torch = torchRef.current;
+  const gripPanel = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.49, 0.22), darkSteel);
+  gripPanel.position.set(-0.22, 0.12, 0);
+  gripPanel.rotation.z = -0.16;
+  group.add(gripPanel);
 
-    if (torch) {
-      torch.style.setProperty(
-        "--torch-angle",
-        `${pose.angle}deg`
-      );
+  const triggerGuard = new THREE.Mesh(
+    new THREE.TorusGeometry(0.15, 0.025, 8, 20, Math.PI),
+    steel
+  );
+  triggerGuard.position.set(0.04, 0.38, 0.03);
+  triggerGuard.rotation.z = Math.PI;
+  group.add(triggerGuard);
 
-      torch.style.setProperty(
-        "--torch-scale",
-        pose.torchScale
-      );
-    }
-  };
+  const trigger = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.18, 0.04), darkSteel);
+  trigger.position.set(0.045, 0.32, 0.08);
+  trigger.rotation.z = -0.2;
+  group.add(trigger);
 
-  // --------------------------------------------------
-  // CANVAS FLASHLIGHT ENGINE
-  // --------------------------------------------------
+  const hand = new THREE.Mesh(new THREE.CapsuleGeometry(0.15, 0.42, 5, 10), gripMat);
+  hand.position.set(-0.055, -0.02, 0.13);
+  hand.rotation.z = -0.12;
+  group.add(hand);
+
+  // Small metallic screws and slide grooves.
+  for (const z of [-0.13, 0.13]) {
+    const screw = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.012, 12), steel);
+    screw.rotation.x = Math.PI / 2;
+    screw.position.set(0.13, 0.68, z);
+    group.add(screw);
+  }
+
+  scene.add(group);
+  return group;
+}
+
+export default function Home() {
+  const mountRef = useRef(null);
+  const cursorRef = useRef(null);
+  const overlayRef = useRef(null);
+  const router = useRouter();
 
   useEffect(() => {
-    const scene = sceneRef.current;
-    const canvas = canvasRef.current;
+    const mount = mountRef.current;
+    if (!mount) return;
 
-    if (!scene || !canvas) return;
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x030305);
 
-    const ctx = canvas.getContext("2d", {
-      alpha: true,
-      desynchronized: true,
+    const camera = new THREE.PerspectiveCamera(48, 1, 0.08, 80);
+    camera.position.set(0, 0, 0);
+    camera.lookAt(0, 0, -10);
+
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: false,
+      powerPreference: "high-performance",
     });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    renderer.setSize(mount.clientWidth, mount.clientHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.25;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.domElement.className = "three-scene-canvas";
+    mount.appendChild(renderer.domElement);
 
-    if (!ctx) return;
+    const ambient = new THREE.AmbientLight(0xb8aa92, 0.17);
+    scene.add(ambient);
+    const hemi = new THREE.HemisphereLight(0xc9b894, 0x171116, 0.18);
+    scene.add(hemi);
 
-    let width = 0;
-    let height = 0;
-    let dpr = 1;
-    let animationId;
+    // The wall is physically behind the boards on negative Z.
+    const wallTexture = makeWallTexture();
+    const wall = new THREE.Mesh(
+      new THREE.PlaneGeometry(24, 13.5),
+      new THREE.MeshStandardMaterial({
+        map: wallTexture,
+        color: 0xc2b394,
+        roughness: 0.96,
+        metalness: 0,
+      })
+    );
+    wall.position.set(0, 0, WALL_Z);
+    wall.receiveShadow = true;
+    scene.add(wall);
 
-    const reduceMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    ).matches;
+    // A faint red practical light adds an atmospheric stain to the room.
+    const redPractical = new THREE.PointLight(0x6c1018, 2.2, 8, 2);
+    redPractical.position.set(-7, 3.4, -7.5);
+    scene.add(redPractical);
 
-    // Dust particles.
-    const dust = Array.from({ length: 150 }, () => ({
-      x: Math.random() * window.innerWidth,
-      y: Math.random() * window.innerHeight,
-      radius: Math.random() * 1.45 + 0.35,
-      speed: Math.random() * 0.23 + 0.05,
-      drift: (Math.random() - 0.5) * 0.3,
-      phase: Math.random() * Math.PI * 2,
-    }));
+    const cards = [];
+    const cardMeshes = [];
 
-    // --------------------------------------------------
-    // RESIZE
-    // --------------------------------------------------
+    for (const item of ITEMS) {
+      const [w, h] = item.size;
+      const group = new THREE.Group();
+      group.position.set(...item.position);
+      group.rotation.z = item.angle;
+
+      const frameMaterial = new THREE.MeshStandardMaterial({
+        color: item.kind === "projects" ? 0x28251f : 0x766349,
+        metalness: 0.48,
+        roughness: 0.48,
+      });
+      const frame = new THREE.Mesh(
+        new THREE.BoxGeometry(w + 0.15, h + 0.15, 0.16),
+        frameMaterial
+      );
+      frame.castShadow = true;
+      frame.receiveShadow = true;
+      group.add(frame);
+
+      const texture = makeCardTexture(item);
+      const board = new THREE.Mesh(
+        new THREE.PlaneGeometry(w, h),
+        new THREE.MeshStandardMaterial({
+          map: texture,
+          roughness: 0.9,
+          metalness: 0.02,
+          side: THREE.DoubleSide,
+        })
+      );
+      board.position.z = 0.09;
+      board.castShadow = true;
+      board.receiveShadow = true;
+      board.userData.card = null;
+      group.add(board);
+
+      // Top hanging wire and a small metal pin.
+      const wireLength = 0.62;
+      const wire = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.009, 0.009, wireLength, 8),
+        new THREE.MeshStandardMaterial({ color: 0x302a22, metalness: 0.45, roughness: 0.7 })
+      );
+      wire.position.set(0, h / 2 + wireLength / 2 + 0.06, -0.015);
+      group.add(wire);
+
+      const pin = new THREE.Mesh(
+        new THREE.SphereGeometry(0.055, 12, 10),
+        new THREE.MeshStandardMaterial({ color: 0x99815d, metalness: 0.78, roughness: 0.25 })
+      );
+      pin.position.set(0, h / 2 + 0.06, 0.13);
+      group.add(pin);
+
+      scene.add(group);
+
+      const card = { ...item, group, board, texture, width: w, height: h, broken: false };
+      board.userData.card = card;
+      cards.push(card);
+      cardMeshes.push(board);
+    }
+
+    // -----------------------------------------------
+    // REAL 3D TORCH: grip is closer to camera; lens is
+    // further into negative Z and points at the wall.
+    // -----------------------------------------------
+
+    const torch = makeTorch(scene);
+    const torchBase = torch.group.position.clone();
+    const torchSpot = new THREE.SpotLight(0xffdfae, 115, 18, 0.43, 0.82, 1.45);
+    torchSpot.castShadow = true;
+    torchSpot.shadow.mapSize.set(1024, 1024);
+    torchSpot.shadow.bias = -0.00015;
+    torchSpot.shadow.radius = 5;
+    scene.add(torchSpot);
+    scene.add(torchSpot.target);
+
+    const beamGeometry = new THREE.CylinderGeometry(1.8, 0.035, 1, 32, 1, true);
+    beamGeometry.translate(0, 0.5, 0);
+    const beamMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffdca3,
+      transparent: true,
+      opacity: 0.075,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    const beam = new THREE.Mesh(beamGeometry, beamMaterial);
+    beam.renderOrder = 2;
+    scene.add(beam);
+
+    const softBeam = new THREE.Mesh(
+      new THREE.CylinderGeometry(2.3, 0.075, 1, 32, 1, true),
+      new THREE.MeshBasicMaterial({
+        color: 0xffdca3,
+        transparent: true,
+        opacity: 0.022,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      })
+    );
+    softBeam.geometry.translate(0, 0.5, 0);
+    softBeam.renderOrder = 1;
+    scene.add(softBeam);
+
+    const wallPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -WALL_Z);
+    const raycaster = new THREE.Raycaster();
+    const pointerNdc = new THREE.Vector2(0, 0);
+    const aimTarget = new THREE.Vector3(0, 0, WALL_Z);
+    const lensWorld = new THREE.Vector3();
+
+    const updateAim = () => {
+      raycaster.setFromCamera(pointerNdc, camera);
+      raycaster.ray.intersectPlane(wallPlane, aimTarget);
+
+      const torchDirection = aimTarget.clone().sub(torchBase).normalize();
+      torch.group.position.copy(torchBase);
+      torch.group.quaternion.setFromUnitVectors(UP, torchDirection);
+      torch.group.updateMatrixWorld(true);
+
+      lensWorld.copy(torch.lensLocal);
+      torch.group.localToWorld(lensWorld);
+
+      const beamDirection = aimTarget.clone().sub(lensWorld);
+      const beamDistance = Math.max(0.2, beamDirection.length());
+      beamDirection.normalize();
+
+      torchSpot.position.copy(lensWorld);
+      torchSpot.target.position.copy(aimTarget);
+      torchSpot.target.updateMatrixWorld();
+
+      const beamQuaternion = new THREE.Quaternion().setFromUnitVectors(UP, beamDirection);
+      beam.position.copy(lensWorld);
+      beam.quaternion.copy(beamQuaternion);
+      beam.scale.set(1, beamDistance, 1);
+      softBeam.position.copy(lensWorld);
+      softBeam.quaternion.copy(beamQuaternion);
+      softBeam.scale.set(1, beamDistance, 1);
+    };
+
+    // -----------------------------------------------
+    // 3D GUN: hidden until a portfolio board is clicked.
+    // -----------------------------------------------
+
+    const gun = makeGun(scene);
+    const gunStart = new THREE.Vector3(2.0, -1.05, -1.0);
+    const gunReady = new THREE.Vector3(0.72, -0.50, -1.15);
+    const gunState = {
+      phase: "idle",
+      startTime: 0,
+      phaseTime: 0,
+      card: null,
+      target: null,
+      aimQuaternion: new THREE.Quaternion(),
+      direction: new THREE.Vector3(0, 0, -1),
+      bullet: null,
+      tracer: null,
+      muzzleFlash: null,
+      bulletStart: new THREE.Vector3(),
+    };
+
+    const debris = [];
+    const bats = [];
+    let navigated = false;
+
+    function createBullet(start, end) {
+      const bulletMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffd08a,
+        emissive: 0xff7b24,
+        emissiveIntensity: 4,
+        metalness: 0.25,
+        roughness: 0.2,
+      });
+      const bullet = new THREE.Mesh(new THREE.SphereGeometry(0.055, 12, 10), bulletMaterial);
+      bullet.position.copy(start);
+      scene.add(bullet);
+
+      const points = [start.clone(), start.clone()];
+      const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+      const tracer = new THREE.Line(
+        lineGeometry,
+        new THREE.LineBasicMaterial({ color: 0xffc477, transparent: true, opacity: 0.95 })
+      );
+      scene.add(tracer);
+
+      const flash = new THREE.PointLight(0xffa43b, 18, 3, 2);
+      flash.position.copy(start);
+      scene.add(flash);
+
+      const flashBall = new THREE.Mesh(
+        new THREE.SphereGeometry(0.13, 10, 8),
+        new THREE.MeshBasicMaterial({ color: 0xffd18a, transparent: true, opacity: 0.95 })
+      );
+      flashBall.position.copy(start);
+      scene.add(flashBall);
+
+      gunState.bullet = bullet;
+      gunState.tracer = tracer;
+      gunState.muzzleFlash = { light: flash, ball: flashBall };
+      gunState.bulletStart.copy(start);
+      gunState.target.copy(end);
+    }
+
+    function shatterCard(card) {
+      if (card.broken) return;
+      card.broken = true;
+      card.group.updateMatrixWorld(true);
+
+      const cols = 5;
+      const rows = 4;
+      const w = card.width;
+      const h = card.height;
+      const x0 = -w / 2;
+      const y0 = -h / 2;
+      const center = card.group.getWorldPosition(new THREE.Vector3());
+
+      const corners = (x, y) => new THREE.Vector3(x, y, 0.105).applyMatrix4(card.group.matrixWorld);
+
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const xa = x0 + (col / cols) * w;
+          const xb = x0 + ((col + 1) / cols) * w;
+          const ya = y0 + (row / rows) * h;
+          const yb = y0 + ((row + 1) / rows) * h;
+          const uvA = [col / cols, row / rows];
+          const uvB = [(col + 1) / cols, row / rows];
+          const uvC = [(col + 1) / cols, (row + 1) / rows];
+          const uvD = [col / cols, (row + 1) / rows];
+
+          const triangles = [
+            [[xa, ya, uvA], [xb, ya, uvB], [xb, yb, uvC]],
+            [[xa, ya, uvA], [xb, yb, uvC], [xa, yb, uvD]],
+          ];
+
+          for (const tri of triangles) {
+            const worldVertices = tri.map(([x, y]) => corners(x, y));
+            const centroid = worldVertices[0].clone()
+              .add(worldVertices[1])
+              .add(worldVertices[2])
+              .multiplyScalar(1 / 3);
+
+            const positions = [];
+            const uvs = [];
+            tri.forEach((vertex, index) => {
+              const local = worldVertices[index].clone().sub(centroid);
+              positions.push(local.x, local.y, local.z);
+              uvs.push(vertex[2][0], 1 - vertex[2][1]);
+            });
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+            geometry.computeVertexNormals();
+
+            const material = new THREE.MeshStandardMaterial({
+              map: card.texture,
+              roughness: 0.8,
+              metalness: 0.02,
+              side: THREE.DoubleSide,
+              transparent: true,
+            });
+            const shard = new THREE.Mesh(geometry, material);
+            shard.position.copy(centroid);
+            shard.castShadow = true;
+            scene.add(shard);
+
+            const edge = new THREE.LineSegments(
+              new THREE.EdgesGeometry(geometry),
+              new THREE.LineBasicMaterial({ color: 0x51432f, transparent: true, opacity: 0.85 })
+            );
+            shard.add(edge);
+
+            const outward = centroid.clone().sub(center).normalize();
+            const velocity = new THREE.Vector3(
+              outward.x * (1.2 + Math.random() * 2.7) + (Math.random() - 0.5) * 1.6,
+              outward.y * (1.2 + Math.random() * 2.7) + Math.random() * 1.2,
+              1.7 + Math.random() * 3.2
+            );
+
+            debris.push({
+              mesh: shard,
+              velocity,
+              spin: new THREE.Vector3(
+                (Math.random() - 0.5) * 7,
+                (Math.random() - 0.5) * 7,
+                (Math.random() - 0.5) * 7
+              ),
+              age: 0,
+              life: 2.8 + Math.random() * 0.7,
+            });
+          }
+        }
+      }
+
+      card.group.visible = false;
+    }
+
+    function releaseBats(card) {
+      const origin = card.group.getWorldPosition(new THREE.Vector3());
+      origin.z += 0.18;
+
+      for (let i = 0; i < 11; i++) {
+        const start = origin.clone().add(new THREE.Vector3(
+          (Math.random() - 0.5) * card.width * 0.8,
+          (Math.random() - 0.5) * card.height * 0.7,
+          (Math.random() - 0.5) * 0.18
+        ));
+        const bat = makeBat(scene, start, i === 0);
+        bats.push(bat);
+      }
+    }
+
+    function beginShot(card) {
+      if (gunState.phase !== "idle" || bats.length > 0 || card.broken || navigated) return;
+
+      const target = card.group.getWorldPosition(new THREE.Vector3());
+      const direction = target.clone().sub(gunReady).normalize();
+      const aimQuaternion = new THREE.Quaternion().setFromUnitVectors(UP, direction);
+
+      gunState.phase = "draw";
+      gunState.startTime = performance.now();
+      gunState.phaseTime = performance.now();
+      gunState.card = card;
+      gunState.target = target;
+      gunState.direction.copy(direction);
+      gunState.aimQuaternion.copy(aimQuaternion);
+      gun.visible = true;
+      gun.position.copy(gunStart);
+      gun.quaternion.identity();
+    }
+
+    function updateGun(now) {
+      if (gunState.phase === "idle") return;
+
+      const elapsed = now - gunState.phaseTime;
+
+      if (gunState.phase === "draw") {
+        const progress = clamp(elapsed / 360);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        gun.position.lerpVectors(gunStart, gunReady, eased);
+        gun.quaternion.identity().slerp(gunState.aimQuaternion, eased);
+
+        if (progress >= 1) {
+          gun.position.copy(gunReady);
+          gun.quaternion.copy(gunState.aimQuaternion);
+          gun.updateMatrixWorld(true);
+          const muzzlePosition = new THREE.Vector3(0, 1.56, 0);
+          gun.localToWorld(muzzlePosition);
+          createBullet(muzzlePosition, gunState.target);
+          gunState.phase = "fire";
+          gunState.phaseTime = now;
+        }
+      } else if (gunState.phase === "fire") {
+        const progress = clamp(elapsed / 155);
+        const recoil = Math.sin(progress * Math.PI) * 0.14;
+        gun.position.copy(gunReady).addScaledVector(gunState.direction, -recoil);
+
+        const recoilRotation = new THREE.Quaternion().setFromAxisAngle(
+          new THREE.Vector3(1, 0, 0),
+          -Math.sin(progress * Math.PI) * 0.09
+        );
+        gun.quaternion.copy(gunState.aimQuaternion).multiply(recoilRotation);
+
+        if (gunState.bullet) {
+          const current = gunState.bulletStart.clone().lerp(gunState.target, progress);
+          gunState.bullet.position.copy(current);
+          const positions = gunState.tracer.geometry.attributes.position;
+          positions.setXYZ(0, gunState.bulletStart.x, gunState.bulletStart.y, gunState.bulletStart.z);
+          positions.setXYZ(1, current.x, current.y, current.z);
+          positions.needsUpdate = true;
+        }
+
+        if (gunState.muzzleFlash) {
+          const fade = 1 - progress;
+          gunState.muzzleFlash.light.intensity = 18 * fade;
+          gunState.muzzleFlash.ball.scale.setScalar(0.3 + fade * 1.2);
+          gunState.muzzleFlash.ball.material.opacity = fade;
+        }
+
+        if (progress >= 1) {
+          if (gunState.bullet) scene.remove(gunState.bullet);
+          if (gunState.tracer) scene.remove(gunState.tracer);
+          if (gunState.muzzleFlash) {
+            scene.remove(gunState.muzzleFlash.light);
+            scene.remove(gunState.muzzleFlash.ball);
+          }
+          gunState.bullet = null;
+          gunState.tracer = null;
+          gunState.muzzleFlash = null;
+
+          shatterCard(gunState.card);
+          releaseBats(gunState.card);
+
+          gunState.phase = "holster";
+          gunState.phaseTime = now;
+        }
+      } else if (gunState.phase === "holster") {
+        const progress = clamp(elapsed / 330);
+        const eased = smoothstep(progress);
+        gun.position.lerpVectors(gunReady, gunStart, eased);
+        gun.quaternion.slerp(new THREE.Quaternion(), eased * 0.12);
+
+        if (progress >= 1) {
+          gun.visible = false;
+          gunState.phase = "idle";
+        }
+      }
+    }
+
+    function updateDebris(delta) {
+      for (let i = debris.length - 1; i >= 0; i--) {
+        const piece = debris[i];
+        piece.age += delta;
+        piece.velocity.y -= 4.5 * delta;
+        piece.mesh.position.addScaledVector(piece.velocity, delta);
+        piece.mesh.rotation.x += piece.spin.x * delta;
+        piece.mesh.rotation.y += piece.spin.y * delta;
+        piece.mesh.rotation.z += piece.spin.z * delta;
+
+        const fade = clamp(1 - piece.age / piece.life);
+        piece.mesh.material.opacity = fade;
+
+        if (piece.age >= piece.life) {
+          scene.remove(piece.mesh);
+          piece.mesh.geometry.dispose();
+          piece.mesh.material.dispose();
+          piece.mesh.children.forEach((child) => {
+            child.geometry?.dispose();
+            child.material?.dispose();
+          });
+          debris.splice(i, 1);
+        }
+      }
+    }
+
+    function updateBats(delta) {
+      for (let i = bats.length - 1; i >= 0; i--) {
+        const bat = bats[i];
+        bat.age += delta;
+
+        const flap = Math.sin(bat.age * 19) * 0.78;
+        bat.leftWing.rotation.z = flap;
+        bat.rightWing.rotation.z = -flap;
+
+        if (bat.hero) {
+          const progress = clamp(bat.age / 2.05);
+          const destination = new THREE.Vector3(0, 0, -0.38);
+          bat.group.position.lerpVectors(bat.start, destination, smoothstep(progress));
+          bat.group.scale.setScalar(0.42 + progress * 3.65);
+
+          if (overlayRef.current) {
+            overlayRef.current.style.opacity = String(clamp((progress - 0.72) / 0.28) * 0.88);
+          }
+
+          if (progress >= 1 && !navigated) {
+            navigated = true;
+            const destinationRoute = gunState.card?.href || "/";
+            router.push(destinationRoute);
+          }
+        } else {
+          bat.group.position.addScaledVector(bat.velocity, delta);
+          bat.group.rotation.z += Math.sin(bat.age * 5) * delta * 0.22;
+          bat.group.scale.setScalar(bat.baseScale * (1 + Math.sin(bat.age * 8) * 0.08));
+
+          if (bat.age > 3.0) {
+            scene.remove(bat.group);
+            bat.group.traverse((object) => {
+              if (object.isMesh) {
+                object.geometry.dispose();
+                if (Array.isArray(object.material)) object.material.forEach((m) => m.dispose());
+                else object.material.dispose();
+              }
+            });
+            bats.splice(i, 1);
+          }
+        }
+      }
+    }
+
+    // -----------------------------------------------
+    // POINTER: direct ray-to-wall mapping, no lerp.
+    // -----------------------------------------------
+
+    const handlePointerMove = (event) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointerNdc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      pointerNdc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      updateAim();
+
+      if (cursorRef.current) {
+        cursorRef.current.style.transform = `translate3d(${event.clientX - rect.left}px, ${event.clientY - rect.top}px, 0)`;
+      }
+    };
+
+    const handlePointerDown = (event) => {
+      if (event.button !== 0 || gunState.phase !== "idle") return;
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointerNdc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      pointerNdc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointerNdc, camera);
+      const hits = raycaster.intersectObjects(cardMeshes, false);
+      const card = hits[0]?.object?.userData?.card;
+      if (card && !card.broken) {
+        event.preventDefault();
+        beginShot(card);
+      }
+    };
+
+    renderer.domElement.addEventListener("pointermove", handlePointerMove, { passive: true });
+    renderer.domElement.addEventListener("pointerdown", handlePointerDown);
 
     const resize = () => {
-      const rect = scene.getBoundingClientRect();
+      const width = mount.clientWidth;
+      const height = mount.clientHeight;
+      const aspect = width / height;
+      camera.aspect = aspect;
 
-      width = rect.width;
-      height = rect.height;
+      // A slightly wider field of view helps the wall fit on tablets.
+      camera.fov = aspect < 1.45 ? 56 : 48;
+      camera.updateProjectionMatrix();
 
-      dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-
-      canvas.width = Math.round(width * dpr);
-      canvas.height = Math.round(height * dpr);
-
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
-
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      if (!pointer.current.initialized) {
-        pointer.current.x = width * 0.5;
-        pointer.current.y = height * 0.46;
-        pointer.current.initialized = true;
+      // Re-arrange the actual 3D boards on narrow screens rather than
+      // letting the left/right boards disappear outside the camera view.
+      if (aspect < 0.9) {
+        const mobileLayout = {
+          about: [-1.12, 2.15, -8.7],
+          projects: [1.12, 2.15, -8.7],
+          skills: [-1.12, -0.1, -8.7],
+          experience: [1.12, -0.1, -8.7],
+          contact: [0, -2.35, -8.7],
+        };
+        cards.forEach((card) => {
+          card.group.position.set(...mobileLayout[card.id]);
+          card.group.scale.setScalar(0.62);
+        });
+      } else if (aspect < 1.45) {
+        const tabletLayout = {
+          about: [-4.45, 1.05, -8.7],
+          projects: [0, 1.45, -8.65],
+          skills: [4.45, 0.95, -8.7],
+          experience: [-2.65, -2.25, -8.65],
+          contact: [2.65, -2.35, -8.65],
+        };
+        cards.forEach((card) => {
+          card.group.position.set(...tabletLayout[card.id]);
+          card.group.scale.setScalar(0.9);
+        });
+      } else {
+        cards.forEach((card) => {
+          card.group.position.set(...card.position);
+          card.group.scale.setScalar(1);
+        });
       }
 
-      // Recalculate the torch angle after resize.
-      const pose = calculateTorchPose(
-        pointer.current.x,
-        pointer.current.y,
-        width,
-        height
-      );
-
-      if (torchRef.current) {
-        torchRef.current.style.setProperty(
-          "--torch-angle",
-          `${pose.angle}deg`
-        );
-
-        torchRef.current.style.setProperty(
-          "--torch-scale",
-          pose.torchScale
-        );
-      }
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+      renderer.setSize(width, height);
+      updateAim();
     };
-
-    // --------------------------------------------------
-    // RENDER
-    // --------------------------------------------------
-
-    const render = (time) => {
-      const t = time * 0.001;
-
-      // IMPORTANT:
-      // No smoothing factor.
-      // No tx/ty interpolation.
-      // No delayed pointer position.
-      const mouseX = pointer.current.x;
-      const mouseY = pointer.current.y;
-
-      const pose = calculateTorchPose(
-        mouseX,
-        mouseY,
-        width,
-        height
-      );
-
-      // The flashlight origin is its ACTUAL lens.
-      const ox = pose.originX;
-      const oy = pose.originY;
-
-      const px = mouseX;
-      const py = mouseY;
-
-      const beamDX = px - ox;
-      const beamDY = py - oy;
-
-      const beamLength = Math.max(
-        1,
-        Math.hypot(beamDX, beamDY)
-      );
-
-      const beamX = beamDX / beamLength;
-      const beamY = beamDY / beamLength;
-
-      // Perpendicular direction for cone width.
-      const normalX = -beamY;
-      const normalY = beamX;
-
-      const halfWidth = Math.min(
-        155,
-        Math.max(12, beamLength * 0.14)
-      );
-
-      const spotlightRadius = Math.min(
-        190,
-        Math.max(75, width * 0.135)
-      );
-
-      ctx.clearRect(0, 0, width, height);
-
-      // ==========================================
-      // 1. DARKNESS
-      // ==========================================
-
-      ctx.globalCompositeOperation = "source-over";
-
-      ctx.fillStyle = "rgba(2, 2, 4, 0.975)";
-      ctx.fillRect(0, 0, width, height);
-
-      // ==========================================
-      // 2. REMOVE DARKNESS FROM THE LIGHT CONE
-      // ==========================================
-
-      ctx.save();
-
-      ctx.globalCompositeOperation = "destination-out";
-
-      ctx.beginPath();
-
-      ctx.moveTo(ox, oy);
-
-      ctx.lineTo(
-        px + normalX * halfWidth,
-        py + normalY * halfWidth
-      );
-
-      ctx.lineTo(
-        px - normalX * halfWidth,
-        py - normalY * halfWidth
-      );
-
-      ctx.closePath();
-
-      const coneMask = ctx.createLinearGradient(
-        ox,
-        oy,
-        px,
-        py
-      );
-
-      coneMask.addColorStop(
-        0,
-        "rgba(0,0,0,0.035)"
-      );
-
-      coneMask.addColorStop(
-        0.2,
-        "rgba(0,0,0,0.09)"
-      );
-
-      coneMask.addColorStop(
-        0.65,
-        "rgba(0,0,0,0.23)"
-      );
-
-      coneMask.addColorStop(
-        1,
-        "rgba(0,0,0,0.38)"
-      );
-
-      ctx.fillStyle = coneMask;
-      ctx.shadowBlur = 35;
-      ctx.shadowColor = "rgba(0,0,0,0.8)";
-      ctx.fill();
-
-      // Bright circular light on the wall.
-      const spotlight = ctx.createRadialGradient(
-        px,
-        py,
-        0,
-        px,
-        py,
-        spotlightRadius
-      );
-
-      spotlight.addColorStop(
-        0,
-        "rgba(0,0,0,0.99)"
-      );
-
-      spotlight.addColorStop(
-        0.25,
-        "rgba(0,0,0,0.94)"
-      );
-
-      spotlight.addColorStop(
-        0.55,
-        "rgba(0,0,0,0.68)"
-      );
-
-      spotlight.addColorStop(
-        0.82,
-        "rgba(0,0,0,0.25)"
-      );
-
-      spotlight.addColorStop(
-        1,
-        "rgba(0,0,0,0)"
-      );
-
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = spotlight;
-
-      ctx.beginPath();
-
-      ctx.arc(
-        px,
-        py,
-        spotlightRadius,
-        0,
-        Math.PI * 2
-      );
-
-      ctx.fill();
-
-      ctx.restore();
-
-      // ==========================================
-      // 3. VOLUMETRIC LIGHT BEAM
-      // ==========================================
-
-      ctx.save();
-
-      ctx.globalCompositeOperation = "screen";
-
-      // Main beam.
-      ctx.beginPath();
-
-      ctx.moveTo(ox, oy);
-
-      ctx.lineTo(
-        px + normalX * halfWidth,
-        py + normalY * halfWidth
-      );
-
-      ctx.lineTo(
-        px - normalX * halfWidth,
-        py - normalY * halfWidth
-      );
-
-      ctx.closePath();
-
-      const beamGradient = ctx.createLinearGradient(
-        ox,
-        oy,
-        px,
-        py
-      );
-
-      beamGradient.addColorStop(
-        0,
-        "rgba(255,224,171,0.025)"
-      );
-
-      beamGradient.addColorStop(
-        0.35,
-        "rgba(255,224,171,0.035)"
-      );
-
-      beamGradient.addColorStop(
-        0.72,
-        "rgba(255,224,171,0.075)"
-      );
-
-      beamGradient.addColorStop(
-        1,
-        "rgba(255,229,183,0.14)"
-      );
-
-      ctx.fillStyle = beamGradient;
-
-      ctx.shadowBlur = 48;
-      ctx.shadowColor = "rgba(255,219,159,0.22)";
-
-      ctx.fill();
-
-      ctx.shadowBlur = 0;
-
-      // Individual rays inside the volumetric beam.
-      for (let i = -4; i <= 4; i++) {
-        const offset = (i / 4) * halfWidth * 0.78;
-
-        const shimmer =
-          0.5 + Math.sin(t * 1.7 + i * 1.4) * 0.5;
-
-        const ray = ctx.createLinearGradient(
-          ox,
-          oy,
-          px,
-          py
-        );
-
-        ray.addColorStop(
-          0,
-          "rgba(255,225,178,0)"
-        );
-
-        ray.addColorStop(
-          0.55,
-          `rgba(255,225,178,${0.008 + shimmer * 0.013})`
-        );
-
-        ray.addColorStop(
-          1,
-          `rgba(255,230,187,${0.025 + shimmer * 0.035})`
-        );
-
-        ctx.beginPath();
-
-        ctx.moveTo(
-          ox + normalX * offset * 0.03,
-          oy + normalY * offset * 0.03
-        );
-
-        ctx.lineTo(
-          px + normalX * offset,
-          py + normalY * offset
-        );
-
-        ctx.strokeStyle = ray;
-        ctx.lineWidth = i === 0 ? 2 : 1;
-
-        ctx.stroke();
-      }
-
-      // Glow at the point where the light hits the wall.
-      const endpointGlow = ctx.createRadialGradient(
-        px,
-        py,
-        0,
-        px,
-        py,
-        spotlightRadius
-      );
-
-      endpointGlow.addColorStop(
-        0,
-        "rgba(255,235,202,0.15)"
-      );
-
-      endpointGlow.addColorStop(
-        0.4,
-        "rgba(255,224,179,0.055)"
-      );
-
-      endpointGlow.addColorStop(
-        1,
-        "rgba(255,224,179,0)"
-      );
-
-      ctx.fillStyle = endpointGlow;
-
-      ctx.beginPath();
-
-      ctx.arc(
-        px,
-        py,
-        spotlightRadius,
-        0,
-        Math.PI * 2
-      );
-
-      ctx.fill();
-
-      ctx.restore();
-
-      // ==========================================
-      // 4. FLOATING DUST PARTICLES
-      // ==========================================
-
-      ctx.save();
-
-      ctx.globalCompositeOperation = "screen";
-
-      for (const particle of dust) {
-        if (!reduceMotion) {
-          particle.y -= particle.speed;
-
-          particle.x +=
-            particle.drift +
-            Math.sin(t + particle.phase) * 0.08;
-        }
-
-        if (particle.y < -5) {
-          particle.y = height + 5;
-          particle.x = Math.random() * width;
-        }
-
-        if (particle.x < -5) particle.x = width + 5;
-        if (particle.x > width + 5) particle.x = -5;
-
-        const relativeX = particle.x - ox;
-        const relativeY = particle.y - oy;
-
-        const progress =
-          (relativeX * beamDX + relativeY * beamDY) /
-          (beamLength * beamLength);
-
-        if (progress <= 0 || progress >= 1) continue;
-
-        const closestX = ox + beamDX * progress;
-        const closestY = oy + beamDY * progress;
-
-        const perpendicularDistance = Math.hypot(
-          particle.x - closestX,
-          particle.y - closestY
-        );
-
-        const localBeamWidth = halfWidth * progress;
-
-        if (perpendicularDistance < localBeamWidth) {
-          const intensity =
-            1 -
-            perpendicularDistance /
-              Math.max(1, localBeamWidth);
-
-          const alpha = 0.035 + intensity * 0.28;
-
-          ctx.beginPath();
-
-          ctx.arc(
-            particle.x,
-            particle.y,
-            particle.radius,
-            0,
-            Math.PI * 2
-          );
-
-          ctx.fillStyle =
-            `rgba(255,233,194,${alpha})`;
-
-          ctx.fill();
-        }
-      }
-
-      ctx.restore();
-
-      // ==========================================
-      // 5. FOCUS RETICLE EXACTLY AT THE MOUSE
-      // ==========================================
-
-      ctx.save();
-
-      ctx.globalCompositeOperation = "screen";
-
-      ctx.strokeStyle = "rgba(255,236,201,0.75)";
-      ctx.fillStyle = "rgba(255,236,201,0.9)";
-      ctx.lineWidth = 1;
-
-      ctx.beginPath();
-      ctx.arc(px, py, 10, 0, Math.PI * 2);
-      ctx.stroke();
-
-      const crosshair = 5;
-
-      ctx.beginPath();
-
-      ctx.moveTo(px - 20, py);
-      ctx.lineTo(px - crosshair, py);
-
-      ctx.moveTo(px + crosshair, py);
-      ctx.lineTo(px + 20, py);
-
-      ctx.moveTo(px, py - 20);
-      ctx.lineTo(px, py - crosshair);
-
-      ctx.moveTo(px, py + crosshair);
-      ctx.lineTo(px, py + 20);
-
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.arc(px, py, 1.8, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.restore();
-
-      animationId = requestAnimationFrame(render);
-    };
-
-    resize();
 
     const resizeObserver = new ResizeObserver(resize);
-
-    resizeObserver.observe(scene);
-
+    resizeObserver.observe(mount);
     window.addEventListener("resize", resize);
+    resize();
 
-    animationId = requestAnimationFrame(render);
+    let frameId = 0;
+    let previousTime = performance.now();
+    const animate = (now) => {
+      const delta = Math.min((now - previousTime) / 1000, 0.035);
+      previousTime = now;
+
+      updateGun(now);
+      updateDebris(delta);
+      updateBats(delta);
+      renderer.render(scene, camera);
+      frameId = requestAnimationFrame(animate);
+    };
+    frameId = requestAnimationFrame(animate);
 
     return () => {
-      cancelAnimationFrame(animationId);
-
+      cancelAnimationFrame(frameId);
       resizeObserver.disconnect();
-
       window.removeEventListener("resize", resize);
-    };
-  }, []);
+      renderer.domElement.removeEventListener("pointermove", handlePointerMove);
+      renderer.domElement.removeEventListener("pointerdown", handlePointerDown);
 
-  // --------------------------------------------------
-  // UI
-  // --------------------------------------------------
+      scene.traverse((object) => {
+        if (object.isMesh || object.isLine) {
+          object.geometry?.dispose();
+          if (Array.isArray(object.material)) object.material.forEach((m) => m.dispose());
+          else object.material?.dispose();
+        }
+      });
+
+      renderer.dispose();
+      renderer.domElement.remove();
+    };
+  }, [router]);
 
   return (
-    <main
-      className="horror-portfolio"
-      ref={sceneRef}
-      onPointerMove={updatePointer}
-      onPointerDown={updatePointer}
-    >
-      {/* THE WALL */}
+    <main className="horror-portfolio">
+      <div ref={mountRef} className="three-scene" />
 
-      <div className="wall-surface" />
-      <div className="wall-vignette" />
-
-      {/* PORTFOLIO OBJECTS */}
-
-      <div className="portfolio-wall">
-        {portfolioItems.map((item, index) => (
-          <Link
-            key={item.id}
-            href={item.href}
-            className={`portfolio-card card--${item.kind}`}
-            aria-label={`Open ${item.title} section`}
-          >
-            <span className="hanging-thread" />
-
-            <span className="wall-pin">
-              <span />
-            </span>
-
-            <div className="card-content">
-              <div className="card-topline">
-                <span>{item.code}</span>
-                <span>0{index + 1}</span>
-              </div>
-
-              {/* ABOUT */}
-
-              {item.kind === "about" && (
-                <>
-                  <div className="portrait-art">
-                    <div className="portrait-window" />
-                    <div className="portrait-sun" />
-
-                    <div className="portrait-person">
-                      <div className="portrait-head" />
-                      <div className="portrait-body" />
-                    </div>
-
-                    <span className="portrait-caption">
-                      PERSONAL ARCHIVE
-                    </span>
-                  </div>
-
-                  <div className="card-heading">
-                    <h2>{item.title}</h2>
-                    <p>{item.description}</p>
-                  </div>
-                </>
-              )}
-
-              {/* PROJECTS */}
-
-              {item.kind === "projects" && (
-                <>
-                  <div className="project-collage">
-                    <div className="project-window window-one">
-                      <div className="window-bar">
-                        <i />
-                        <i />
-                        <i />
-                      </div>
-
-                      <div className="window-layout">
-                        <div />
-                        <div />
-                        <div />
-                      </div>
-                    </div>
-
-                    <div className="project-window window-two">
-                      <div className="window-bar">
-                        <i />
-                        <i />
-                        <i />
-                      </div>
-
-                      <div className="window-layout">
-                        <div />
-                        <div />
-                      </div>
-                    </div>
-
-                    <span className="collage-number">03</span>
-                  </div>
-
-                  <div className="card-heading">
-                    <h2>{item.title}</h2>
-                    <p>{item.description}</p>
-                  </div>
-                </>
-              )}
-
-              {/* SKILLS */}
-
-              {item.kind === "skills" && (
-                <>
-                  <div className="skills-art">
-                    <span className="skill-label">
-                      CURRENT LOADOUT
-                    </span>
-
-                    <div className="skill-tags">
-                      <span>REACT</span>
-                      <span>NEXT.JS</span>
-                      <span>NODE</span>
-                      <span>MONGODB</span>
-                      <span>UI / UX</span>
-                      <span>AI</span>
-                    </div>
-
-                    <div className="skill-stamp">
-                      TOOLS
-                      <br />
-                      OF THE
-                      <br />
-                      TRADE
-                    </div>
-                  </div>
-
-                  <div className="card-heading">
-                    <h2>{item.title}</h2>
-                    <p>{item.description}</p>
-                  </div>
-                </>
-              )}
-
-              {/* EXPERIENCE */}
-
-              {item.kind === "experience" && (
-                <>
-                  <div className="timeline-art">
-                    <div className="timeline-line" />
-
-                    <div className="timeline-entry">
-                      <span />
-
-                      <div>
-                        <b>THE BEGINNING</b>
-                        <small>Ideas &amp; curiosity</small>
-                      </div>
-                    </div>
-
-                    <div className="timeline-entry">
-                      <span />
-
-                      <div>
-                        <b>BUILDING THINGS</b>
-                        <small>Projects &amp; experiments</small>
-                      </div>
-                    </div>
-
-                    <div className="timeline-entry">
-                      <span />
-
-                      <div>
-                        <b>WHAT'S NEXT?</b>
-                        <small>The story continues</small>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="card-heading">
-                    <h2>{item.title}</h2>
-                    <p>{item.description}</p>
-                  </div>
-                </>
-              )}
-
-              {/* CONTACT */}
-
-              {item.kind === "contact" && (
-                <>
-                  <div className="contact-art">
-                    <div className="envelope">
-                      <div className="envelope-flap" />
-                      <span>OPEN ME</span>
-                    </div>
-
-                    <span className="contact-mark">✳</span>
-                  </div>
-
-                  <div className="card-heading">
-                    <h2>{item.title}</h2>
-                    <p>{item.description}</p>
-                  </div>
-                </>
-              )}
-
-              <div className="card-bottom">
-                <span>{item.action}</span>
-                <span className="card-arrow">↗</span>
-              </div>
-            </div>
-          </Link>
-        ))}
+      <div ref={cursorRef} className="aim-cursor" aria-hidden="true">
+        <span />
       </div>
 
-      {/* FLASHLIGHT CANVAS */}
-
-      <canvas
-        ref={canvasRef}
-        className="flashlight-canvas"
-        aria-hidden="true"
-      />
-
-      {/* ==========================================
-          3D-STYLE FLASHLIGHT + HAND
-          Its bottom is the fixed pivot.
-          Its front lens rotates towards the pointer.
-      ========================================== */}
-
-      <div
-        ref={torchRef}
-        className="torch-rig"
-        aria-hidden="true"
-      >
-        <svg
-          viewBox="0 0 144 210"
-          className="torch-svg"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <defs>
-            {/* Main metallic body */}
-
-            <linearGradient
-              id="torchBody"
-              x1="0"
-              y1="0"
-              x2="1"
-              y2="0"
-            >
-              <stop offset="0" stopColor="#08090b" />
-              <stop offset="0.13" stopColor="#272a2d" />
-              <stop offset="0.29" stopColor="#55575a" />
-              <stop offset="0.45" stopColor="#242629" />
-              <stop offset="0.68" stopColor="#393b3e" />
-              <stop offset="0.85" stopColor="#141518" />
-              <stop offset="1" stopColor="#050607" />
-            </linearGradient>
-
-            <linearGradient
-              id="torchHead"
-              x1="0"
-              y1="0"
-              x2="0.8"
-              y2="1"
-            >
-              <stop offset="0" stopColor="#56565a" />
-              <stop offset="0.28" stopColor="#1e2023" />
-              <stop offset="0.7" stopColor="#090a0c" />
-              <stop offset="1" stopColor="#35373a" />
-            </linearGradient>
-
-            <linearGradient
-              id="torchGrip"
-              x1="0"
-              y1="0"
-              x2="1"
-              y2="0"
-            >
-              <stop offset="0" stopColor="#08090b" />
-              <stop offset="0.5" stopColor="#292a2b" />
-              <stop offset="1" stopColor="#070809" />
-            </linearGradient>
-
-            <radialGradient
-              id="torchLens"
-              cx="45%"
-              cy="35%"
-              r="70%"
-            >
-              <stop offset="0" stopColor="#fff8e9" />
-              <stop offset="0.22" stopColor="#f8dfad" />
-              <stop offset="0.55" stopColor="#bca276" />
-              <stop offset="0.85" stopColor="#4e4436" />
-              <stop offset="1" stopColor="#141414" />
-            </radialGradient>
-
-            <linearGradient id="handGradient" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#302a27" />
-              <stop offset="0.45" stopColor="#171518" />
-              <stop offset="1" stopColor="#07080a" />
-            </linearGradient>
-
-            <filter id="torchShadow">
-              <feGaussianBlur stdDeviation="3" />
-            </filter>
-          </defs>
-
-          {/* Soft shadow behind the object */}
-
-          <ellipse
-            cx="72"
-            cy="189"
-            rx="48"
-            ry="13"
-            fill="#000"
-            opacity="0.4"
-            filter="url(#torchShadow)"
-          />
-
-          {/* HAND / WRIST IN FOREGROUND */}
-
-          <path
-            d="
-              M28 210
-              C26 193 29 181 37 170
-              L45 151
-              C48 140 54 133 62 136
-              C67 138 68 145 66 153
-              L72 140
-              C77 129 87 128 92 134
-              C96 139 92 149 89 157
-              C98 146 107 149 109 157
-              C112 165 103 176 100 184
-              L108 210Z
-            "
-            fill="url(#handGradient)"
-            stroke="#403934"
-            strokeWidth="1"
-          />
-
-          {/* Palm highlight */}
-
-          <path
-            d="M38 185 C43 165 53 154 62 151"
-            stroke="#5c5045"
-            strokeWidth="2"
-            opacity="0.28"
-            fill="none"
-          />
-
-          {/* Flashlight lower handle */}
-
-          <path
-            d="
-              M51 77
-              Q72 68 93 77
-              L98 150
-              Q98 162 88 169
-              L56 169
-              Q46 162 46 150Z
-            "
-            fill="url(#torchBody)"
-            stroke="#77706a"
-            strokeWidth="1.2"
-          />
-
-          {/* Grip texture */}
-
-          {Array.from({ length: 7 }, (_, i) => (
-            <path
-              key={i}
-              d={`M49 ${112 + i * 6} Q72 ${108 + i * 6} 95 ${112 + i * 6}`}
-              fill="none"
-              stroke="#08090b"
-              strokeWidth="2"
-              opacity="0.75"
-            />
-          ))}
-
-          {/* Body reflection */}
-
-          <path
-            d="M58 81 Q55 115 59 154"
-            fill="none"
-            stroke="#b1a18c"
-            strokeWidth="2"
-            opacity="0.22"
-          />
-
-          <path
-            d="M87 82 Q91 122 87 154"
-            fill="none"
-            stroke="#77716c"
-            strokeWidth="1"
-            opacity="0.3"
-          />
-
-          {/* Flashlight rear cap */}
-
-          <path
-            d="
-              M52 157
-              Q72 164 92 157
-              L94 169
-              Q72 179 50 169Z
-            "
-            fill="url(#torchHead)"
-            stroke="#827362"
-            strokeWidth="1"
-          />
-
-          {/* Metallic rings on the barrel */}
-
-          <path
-            d="M49 83 Q72 91 95 83"
-            fill="none"
-            stroke="#8c806e"
-            strokeWidth="2"
-            opacity="0.65"
-          />
-
-          <path
-            d="M49 91 Q72 99 95 91"
-            fill="none"
-            stroke="#090a0b"
-            strokeWidth="2"
-          />
-
-          {/* Flashlight head cylinder */}
-
-          <path
-            d="
-              M47 33
-              Q72 25 97 33
-              L103 76
-              Q103 86 93 89
-              L51 89
-              Q41 86 41 76Z
-            "
-            fill="url(#torchHead)"
-            stroke="#91816b"
-            strokeWidth="1.4"
-          />
-
-          {/* Head side highlights */}
-
-          <path
-            d="M48 39 L53 78"
-            stroke="#b8a990"
-            strokeWidth="2"
-            opacity="0.45"
-          />
-
-          <path
-            d="M96 39 L92 78"
-            stroke="#030405"
-            strokeWidth="3"
-            opacity="0.8"
-          />
-
-          {/* Front bezel */}
-
-          <ellipse
-            cx="72"
-            cy="32"
-            rx="31"
-            ry="12"
-            fill="#08090a"
-            stroke="#8d806b"
-            strokeWidth="1.5"
-          />
-
-          <ellipse
-            cx="72"
-            cy="30"
-            rx="26"
-            ry="9"
-            fill="#35332f"
-            stroke="#c0ab89"
-            strokeWidth="1"
-          />
-
-          {/* Actual glass lens */}
-
-          <ellipse
-            cx="72"
-            cy="28"
-            rx="21"
-            ry="7.3"
-            fill="#171817"
-          />
-
-          <ellipse
-            cx="72"
-            cy="27"
-            rx="16"
-            ry="5.7"
-            fill="url(#torchLens)"
-          />
-
-          {/* Lens reflection */}
-
-          <path
-            d="M61 26 Q70 21 81 25"
-            stroke="#fff6e0"
-            strokeWidth="1.7"
-            strokeLinecap="round"
-            opacity="0.85"
-            fill="none"
-          />
-
-          {/* Outer bezel details */}
-
-          <path
-            d="M46 37 Q72 44 98 37"
-            stroke="#b6a17e"
-            strokeWidth="1"
-            opacity="0.55"
-            fill="none"
-          />
-
-          <circle cx="48" cy="35" r="1.4" fill="#d3bc92" />
-          <circle cx="96" cy="35" r="1.4" fill="#d3bc92" />
-
-          {/* Fingers wrapped around the barrel */}
-
-          <path
-            d="
-              M43 117
-              Q47 107 56 111
-              Q64 115 62 124
-              L57 144
-              Q53 151 45 147
-              Q38 142 40 132Z
-            "
-            fill="url(#handGradient)"
-            stroke="#57483b"
-            strokeWidth="1"
-          />
-
-          <path
-            d="
-              M99 117
-              Q94 107 86 111
-              Q78 115 80 124
-              L85 144
-              Q89 151 97 147
-              Q104 142 102 132Z
-            "
-            fill="url(#handGradient)"
-            stroke="#57483b"
-            strokeWidth="1"
-          />
-
-          {/* Finger creases */}
-
-          <path
-            d="M43 130 Q50 135 59 129"
-            stroke="#776455"
-            strokeWidth="1"
-            opacity="0.45"
-            fill="none"
-          />
-
-          <path
-            d="M85 129 Q94 135 100 130"
-            stroke="#776455"
-            strokeWidth="1"
-            opacity="0.45"
-            fill="none"
-          />
-        </svg>
-
-        {/* Lens glow follows the rotating torch */}
-
-        <div className="torch-lens-glow" />
-      </div>
-
-      {/* HUD */}
-
-      {/* <header className="scene-header">
-        <Link href="/" className="brand-mark">
+      <header className="scene-header">
+        <div className="brand-mark">
           <span className="brand-symbol">L.</span>
           <span className="brand-name">THE UNKNOWN ROOM</span>
-        </Link>
-
+        </div>
         <div className="header-status">
           <span className="status-light" />
-          <span></span>
+          <span>ENVIRONMENT ACTIVE</span>
         </div>
-      </header> */}
-
-      {/* INTRODUCTION */}
+      </header>
 
       <section className="scene-intro">
-        <span className="intro-eyebrow">
-          HEHEHEHEHEHEHHEEHHEHEHEHEHEEHE
-        </span>
-
+        <span className="intro-eyebrow">AN INTERACTIVE EXPERIENCE</span>
         <h1>
-          FAIZANNN TERI MAA KA BHOSDAAAAAAA
+          Find your way
           <br />
-          <span>AAAGGGGGGGGGGGGG</span>
+          <span>through the dark.</span>
         </h1>
-
-        <p>
-          NIGGAAAAA MOOOOOOO-
-        </p>
+        <p>Move your light around. Click an archive to uncover what is hidden.</p>
       </section>
-
-      {/* INSTRUCTIONS */}
 
       <div className="scene-instruction">
         <span className="instruction-icon">✣</span>
-
-        <span>
-          MOVE YOUR LIGHT TO KNOW MORE ABOUT ME
-        </span>
+        <span>MOVE TO EXPLORE · CLICK AN ARCHIVE TO ENTER</span>
       </div>
 
       <footer className="scene-footer">
-        <span>MY PORTFOLIO...hehehe</span>
-        <span>I like horror HEHEHEHE</span>
+        <span>PORTFOLIO / INTERACTIVE ARCHIVE</span>
+        <span>KEEP LOOKING.</span>
       </footer>
 
-      {/* ==========================================
-          STYLES
-      ========================================== */}
+      <div ref={overlayRef} className="transition-overlay" aria-hidden="true" />
 
       <style jsx global>{`
-        * {
-          box-sizing: border-box;
-        }
-
-        html,
-        body {
-          margin: 0;
-          padding: 0;
-          background: #020203;
-        }
-
-        body {
-          overflow: hidden;
-        }
-
-        a {
-          -webkit-tap-highlight-color: transparent;
-        }
-
-        /* ======================================
-           MAIN SCENE
-        ====================================== */
-
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; background: #020203; overflow: hidden; }
         .horror-portfolio {
-          position: relative;
-          width: 100%;
-          height: 100svh;
-          min-height: 600px;
-          overflow: hidden;
-          isolation: isolate;
-          perspective: 1200px;
-          background: #050506;
-          color: #e7dcc7;
-          cursor: none;
-          touch-action: none;
-          font-family: Arial, Helvetica, sans-serif;
+          position: relative; width: 100%; height: 100svh; min-height: 600px;
+          overflow: hidden; isolation: isolate; background: #030305; color: #e7dcc7;
+          cursor: none; font-family: Arial, Helvetica, sans-serif;
+        }
+        .three-scene { position: absolute; inset: 0; z-index: 1; }
+        .three-scene canvas { display: block; width: 100%; height: 100%; outline: none; }
+        .aim-cursor {
+          position: absolute; top: 0; left: 0; z-index: 22; width: 30px; height: 30px;
+          margin: -15px 0 0 -15px; pointer-events: none; will-change: transform;
+          border: 1px solid rgba(255,235,198,.78); border-radius: 50%;
+          box-shadow: 0 0 12px rgba(255,213,155,.35);
+        }
+        .aim-cursor::before, .aim-cursor::after {
+          content: ""; position: absolute; background: rgba(255,235,198,.75);
+        }
+        .aim-cursor::before { width: 44px; height: 1px; left: -8px; top: 14px; }
+        .aim-cursor::after { height: 44px; width: 1px; top: -8px; left: 14px; }
+        .aim-cursor span {
+          position: absolute; width: 3px; height: 3px; border-radius: 50%;
+          background: #ffe8c4; top: 12px; left: 12px;
         }
-
-        /* ======================================
-           WALL
-        ====================================== */
-
-        .wall-surface {
-          position: absolute;
-          inset: 0;
-          z-index: 0;
-          background-color: #b6a78b;
-
-          background-image:
-            radial-gradient(
-              ellipse at 50% 40%,
-              rgba(245, 226, 190, 0.27),
-              transparent 67%
-            ),
-            radial-gradient(
-              ellipse at 12% 80%,
-              rgba(73, 55, 37, 0.15),
-              transparent 55%
-            ),
-            radial-gradient(
-              ellipse at 88% 15%,
-              rgba(75, 57, 39, 0.12),
-              transparent 52%
-            ),
-            repeating-linear-gradient(
-              0deg,
-              rgba(75, 58, 42, 0.035) 0px,
-              rgba(75, 58, 42, 0.035) 1px,
-              transparent 1px,
-              transparent 4px
-            ),
-            repeating-linear-gradient(
-              90deg,
-              rgba(255, 255, 255, 0.025) 0px,
-              transparent 2px,
-              transparent 5px
-            );
-
-          box-shadow:
-            inset 0 0 140px rgba(44, 31, 19, 0.38),
-            inset 0 0 25px rgba(0, 0, 0, 0.25);
-        }
-
-        .wall-surface::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          opacity: 0.16;
-          pointer-events: none;
-
-          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.45'/%3E%3C/svg%3E");
-        }
-
-        .wall-surface::after {
-          content: "";
-          position: absolute;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          height: 18%;
-          background: linear-gradient(
-            0deg,
-            rgba(23, 19, 17, 0.35),
-            transparent
-          );
-        }
-
-        .wall-vignette {
-          position: absolute;
-          inset: 0;
-          z-index: 1;
-          pointer-events: none;
-
-          background: radial-gradient(
-            ellipse at center,
-            transparent 40%,
-            rgba(0, 0, 0, 0.18) 100%
-          );
-        }
-
-        /* ======================================
-           PORTFOLIO OBJECTS
-        ====================================== */
-
-        .portfolio-wall {
-          position: absolute;
-          inset: 0;
-          z-index: 2;
-          transform-style: preserve-3d;
-        }
-
-        .portfolio-card {
-          position: absolute;
-          display: block;
-          color: #28241e;
-          text-decoration: none;
-          padding: 0;
-          isolation: isolate;
-          outline: none;
-
-          filter: drop-shadow(
-            10px 23px 16px rgba(0, 0, 0, 0.27)
-          );
-
-          transition: filter 0.35s ease;
-          cursor: none;
-        }
-
-        .portfolio-card:hover,
-        .portfolio-card:focus-visible {
-          z-index: 20;
-
-          filter: drop-shadow(
-            14px 28px 24px rgba(0, 0, 0, 0.4)
-          );
-        }
-
-        .portfolio-card:focus-visible .card-content {
-          outline: 2px solid #e9c991;
-          outline-offset: 5px;
-        }
-
-        .card-content {
-          width: 100%;
-          height: 100%;
-          position: relative;
-          padding: 17px;
-          overflow: hidden;
-
-          transition: transform 0.4s cubic-bezier(.2,.8,.2,1);
-        }
-
-        .portfolio-card:hover .card-content {
-          transform: translateY(-5px) scale(1.015);
-        }
-
-        .hanging-thread {
-          position: absolute;
-          height: 51px;
-          width: 1px;
-          top: -50px;
-          left: 50%;
-
-          background: linear-gradient(
-            to bottom,
-            rgba(35, 29, 22, 0.9),
-            rgba(80, 65, 45, 0.42)
-          );
-
-          transform-origin: top;
-        }
-
-        .wall-pin {
-          position: absolute;
-          left: calc(50% - 5px);
-          top: -6px;
-          z-index: 5;
-          width: 11px;
-          height: 11px;
-          border-radius: 50%;
-
-          background: radial-gradient(
-            circle at 35% 30%,
-            #e8cf9f,
-            #70604b 60%,
-            #29231d
-          );
-
-          box-shadow: 1px 2px 5px rgba(0, 0, 0, 0.5);
-        }
-
-        .wall-pin span {
-          position: absolute;
-          inset: 3px;
-          border-radius: 50%;
-          background: #78664a;
-        }
-
-        .card-topline {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 12px;
-          font-family: monospace;
-          font-size: 8px;
-          letter-spacing: 1.25px;
-          opacity: 0.72;
-        }
-
-        .card-heading h2 {
-          margin: 0 0 5px;
-          font-family: Georgia, "Times New Roman", serif;
-          font-size: clamp(17px, 1.65vw, 25px);
-          line-height: 1.06;
-          font-weight: 500;
-          letter-spacing: -0.8px;
-        }
-
-        .card-heading p {
-          margin: 0;
-          font-size: 10px;
-          line-height: 1.5;
-          opacity: 0.74;
-        }
-
-        .card-bottom {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          position: absolute;
-          left: 17px;
-          right: 17px;
-          bottom: 12px;
-          border-top: 1px solid rgba(42, 35, 27, 0.25);
-          padding-top: 8px;
-          font-family: monospace;
-          font-size: 8px;
-          letter-spacing: 1px;
-        }
-
-        .card-arrow {
-          font-size: 17px;
-          line-height: 1;
-          transition: transform 0.25s ease;
-        }
-
-        .portfolio-card:hover .card-arrow {
-          transform: translate(3px, -3px);
-        }
-
-        /* ======================================
-           ABOUT / PORTRAIT FRAME
-        ====================================== */
-
-        .card--about {
-          left: 8%;
-          top: 21%;
-          width: 220px;
-          height: 300px;
-
-          background: #d9ccb2;
-          border: 8px solid #80715b;
-
-          box-shadow:
-            inset 0 0 0 2px #e8dcc7,
-            0 0 0 1px rgba(24, 19, 15, 0.5);
-
-          transform: rotate(-2.2deg);
-
-          animation: frame-sway-left 8s ease-in-out infinite alternate;
-        }
-
-        .card--about .card-content {
-          border: 1px solid rgba(91, 72, 51, 0.26);
-          padding: 12px;
-        }
-
-        .portrait-art {
-          height: 145px;
-          position: relative;
-          overflow: hidden;
-
-          background: linear-gradient(
-            160deg,
-            #c5a980 0%,
-            #8b795e 50%,
-            #514d40 100%
-          );
-
-          border: 3px solid #eee0c5;
-
-          box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.3);
-        }
-
-        .portrait-window {
-          position: absolute;
-          left: 15px;
-          top: 12px;
-          width: 50px;
-          height: 72px;
-          border: 2px solid rgba(240, 219, 175, 0.4);
-          background: rgba(238, 219, 181, 0.1);
-        }
-
-        .portrait-sun {
-          position: absolute;
-          right: 22px;
-          top: 19px;
-          width: 38px;
-          height: 38px;
-          border-radius: 50%;
-          background: #dfc092;
-          box-shadow: 0 0 24px rgba(238, 204, 148, 0.35);
-        }
-
-        .portrait-person {
-          position: absolute;
-          bottom: 0;
-          left: 50%;
-          width: 95px;
-          height: 115px;
-          transform: translateX(-50%);
-        }
-
-        .portrait-head {
-          position: absolute;
-          left: 30px;
-          top: 12px;
-          width: 38px;
-          height: 46px;
-          border-radius: 48% 48% 42% 42%;
-          background: #292721;
-          box-shadow: inset -5px 0 0 rgba(0, 0, 0, 0.25);
-        }
-
-        .portrait-body {
-          position: absolute;
-          bottom: -10px;
-          left: 4px;
-          width: 88px;
-          height: 67px;
-          border-radius: 55% 55% 0 0;
-          background: #333129;
-        }
-
-        .portrait-caption {
-          position: absolute;
-          left: 9px;
-          bottom: 7px;
-          color: #f0dfc0;
-          font-family: monospace;
-          font-size: 7px;
-          letter-spacing: 1px;
-        }
-
-        .card--about .card-heading {
-          padding-top: 10px;
-        }
-
-        /* ======================================
-           PROJECTS / ARCHIVE FRAME
-        ====================================== */
-
-        .card--projects {
-          left: 37%;
-          top: 15%;
-          width: 325px;
-          height: 270px;
-
-          color: #eee1c9;
-          background: #282927;
-          border: 5px solid #7b6e57;
-
-          box-shadow:
-            inset 0 0 0 1px #c5b89c,
-            0 7px 0 #453d31;
-
-          transform: rotate(1.5deg);
-
-          animation: frame-sway-right 9s ease-in-out infinite alternate;
-        }
-
-        .card--projects .card-content {
-          padding: 15px;
-        }
-
-        .card--projects .card-topline {
-          color: #c6b89b;
-        }
-
-        .project-collage {
-          height: 112px;
-          position: relative;
-          margin: 5px 0 12px;
-
-          background: linear-gradient(
-            140deg,
-            #424d49,
-            #252e2e 65%,
-            #697067
-          );
-
-          border: 1px solid #827359;
-          overflow: hidden;
-        }
-
-        .project-collage::after {
-          content: "";
-          position: absolute;
-          inset: 0;
-
-          background: linear-gradient(
-            120deg,
-            transparent 20%,
-            rgba(255, 255, 255, 0.09),
-            transparent 70%
-          );
-        }
-
-        .project-window {
-          position: absolute;
-          background: #d3c5a9;
-          padding: 5px;
-          box-shadow: 4px 5px 12px rgba(0, 0, 0, 0.4);
-        }
-
-        .window-one {
-          left: 28px;
-          top: 15px;
-          width: 145px;
-          height: 88px;
-          transform: rotate(-4deg);
-        }
-
-        .window-two {
-          right: 18px;
-          top: 29px;
-          width: 110px;
-          height: 75px;
-          transform: rotate(4deg);
-        }
-
-        .window-bar {
-          display: flex;
-          gap: 3px;
-          height: 9px;
-          align-items: center;
-          border-bottom: 1px solid #8b806c;
-        }
-
-        .window-bar i {
-          width: 4px;
-          height: 4px;
-          border-radius: 50%;
-          background: #756951;
-        }
-
-        .window-layout {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 4px;
-          padding: 6px 2px;
-          height: calc(100% - 9px);
-        }
-
-        .window-layout div {
-          background: linear-gradient(
-            135deg,
-            #728377,
-            #9b9b7a 55%,
-            #d2b68c
-          );
-
-          border: 1px solid rgba(51, 53, 42, 0.24);
-        }
-
-        .collage-number {
-          position: absolute;
-          right: 12px;
-          bottom: 7px;
-          color: #e5d2ad;
-          font-family: Georgia, serif;
-          font-size: 20px;
-          z-index: 2;
-        }
-
-        .card--projects .card-heading h2 {
-          font-size: 22px;
-        }
-
-        .card--projects .card-bottom {
-          border-color: rgba(231, 218, 192, 0.28);
-        }
-
-        /* ======================================
-           SKILLS / CLIPBOARD
-        ====================================== */
-
-        .card--skills {
-          right: 8%;
-          top: 24%;
-          width: 230px;
-          height: 250px;
-
-          background: #c7b48f;
-          border: 2px solid #736047;
-
-          box-shadow:
-            inset 0 0 0 5px rgba(248, 231, 197, 0.37),
-            0 5px 0 #74634c;
-
-          transform: rotate(2deg);
-
-          animation: frame-sway-left 7.5s ease-in-out infinite alternate;
-        }
-
-        .card--skills .card-content {
-          padding: 16px;
-        }
-
-        .skills-art {
-          height: 105px;
-          position: relative;
-          margin-bottom: 8px;
-          border: 1px solid rgba(80, 63, 43, 0.35);
-          background: rgba(237, 221, 186, 0.35);
-          padding: 10px;
-        }
-
-        .skill-label {
-          display: block;
-          font-family: monospace;
-          font-size: 7px;
-          letter-spacing: 1.3px;
-          margin-bottom: 10px;
-          opacity: 0.75;
-        }
-
-        .skill-tags {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 5px;
-          max-width: 150px;
-        }
-
-        .skill-tags span {
-          font-family: monospace;
-          font-size: 8px;
-          padding: 5px 6px;
-          border: 1px solid rgba(69, 56, 40, 0.44);
-          background: rgba(245, 231, 204, 0.6);
-        }
-
-        .skill-stamp {
-          position: absolute;
-          right: 8px;
-          bottom: 7px;
-          padding: 7px 4px;
-          border: 2px solid rgba(116, 56, 44, 0.6);
-          color: rgba(116, 56, 44, 0.8);
-          font-family: monospace;
-          font-weight: bold;
-          font-size: 7px;
-          line-height: 1.15;
-          text-align: center;
-          transform: rotate(-8deg);
-        }
-
-        /* ======================================
-           EXPERIENCE / DOSSIER
-        ====================================== */
-
-        .card--experience {
-          left: 18%;
-          bottom: 12%;
-          width: 280px;
-          height: 210px;
-
-          background: #e0d4bd;
-          border: 1px solid #a18e70;
-
-          box-shadow:
-            inset 0 0 0 5px rgba(135, 112, 80, 0.13),
-            5px 7px 0 rgba(76, 59, 39, 0.34);
-
-          transform: rotate(-1deg);
-
-          animation: frame-sway-right 10s ease-in-out infinite alternate;
-        }
-
-        .timeline-art {
-          position: relative;
-          height: 99px;
-          padding: 3px 0 0 8px;
-        }
-
-        .timeline-line {
-          position: absolute;
-          top: 7px;
-          bottom: 7px;
-          left: 12px;
-          width: 1px;
-          background: rgba(91, 72, 49, 0.5);
-        }
-
-        .timeline-entry {
-          display: flex;
-          align-items: flex-start;
-          gap: 12px;
-          position: relative;
-          margin-bottom: 12px;
-        }
-
-        .timeline-entry > span {
-          flex: 0 0 auto;
-          width: 9px;
-          height: 9px;
-          margin-top: 2px;
-          border-radius: 50%;
-          background: #74644c;
-          border: 2px solid #e0d4bd;
-          box-shadow: 0 0 0 1px #74644c;
-          z-index: 2;
-        }
-
-        .timeline-entry div {
-          display: flex;
-          flex-direction: column;
-          gap: 3px;
-        }
-
-        .timeline-entry b {
-          font-family: monospace;
-          font-size: 8px;
-          letter-spacing: 0.8px;
-        }
-
-        .timeline-entry small {
-          font-family: Georgia, serif;
-          font-size: 10px;
-          opacity: 0.72;
-        }
-
-        /* ======================================
-           CONTACT / ENVELOPE
-        ====================================== */
-
-        .card--contact {
-          right: 15%;
-          bottom: 13%;
-          width: 250px;
-          height: 195px;
-
-          background: #e6dcc8;
-          border: 2px solid #a08d6f;
-
-          box-shadow:
-            inset 0 0 0 4px rgba(129, 107, 78, 0.13),
-            7px 9px 0 rgba(68, 51, 33, 0.31);
-
-          transform: rotate(2deg);
-
-          animation: frame-sway-left 8.5s ease-in-out infinite alternate;
-        }
-
-        .contact-art {
-          height: 83px;
-          position: relative;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .envelope {
-          width: 106px;
-          height: 62px;
-          position: relative;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          overflow: hidden;
-          border: 1px solid #927b59;
-          background: #bca784;
-          box-shadow: 0 5px 8px rgba(49, 39, 28, 0.22);
-        }
-
-        .envelope::before,
-        .envelope::after {
-          content: "";
-          position: absolute;
-          bottom: 0;
-          width: 0;
-          height: 0;
-          border-style: solid;
-        }
-
-        .envelope::before {
-          left: 0;
-          border-width: 0 52px 39px 0;
-          border-color: transparent transparent #d3c09f transparent;
-        }
-
-        .envelope::after {
-          right: 0;
-          border-width: 0 0 39px 52px;
-          border-color: transparent transparent #c6b18e transparent;
-        }
-
-        .envelope-flap {
-          position: absolute;
-          left: 0;
-          top: 0;
-          width: 0;
-          height: 0;
-          border-style: solid;
-          border-width: 32px 53px 0 53px;
-          border-color: #dfceb0 transparent transparent transparent;
-          z-index: 2;
-        }
-
-        .envelope span {
-          position: relative;
-          z-index: 3;
-          margin-top: 5px;
-          font-family: monospace;
-          font-size: 7px;
-          letter-spacing: 1px;
-          color: #514533;
-        }
-
-        .contact-mark {
-          position: absolute;
-          right: 19px;
-          top: 8px;
-          color: #967c55;
-          font-size: 19px;
-        }
-
-        /* ======================================
-           HANGING MOVEMENT
-        ====================================== */
-
-        @keyframes frame-sway-left {
-          from {
-            translate: 0 0;
-          }
-
-          to {
-            translate: 0 -3px;
-          }
-        }
-
-        @keyframes frame-sway-right {
-          from {
-            translate: 0 -2px;
-          }
-
-          to {
-            translate: 0 3px;
-          }
-        }
-
-        /* ======================================
-           FLASHLIGHT CANVAS
-        ====================================== */
-
-        .flashlight-canvas {
-          position: absolute;
-          inset: 0;
-          z-index: 10;
-          width: 100%;
-          height: 100%;
-          pointer-events: none;
-        }
-
-        /* ======================================
-           ACTUAL 3D-STYLE TORCH
-        ====================================== */
-
-        .torch-rig {
-          position: absolute;
-          left: 50%;
-          bottom: -26px;
-
-          width: 144px;
-          height: 210px;
-
-          z-index: 20;
-          pointer-events: none;
-
-          transform-origin: 50% 100%;
-
-          /*
-            No transition.
-            No CSS easing.
-            No delayed animation.
-
-            The torch rotates immediately with the pointer.
-          */
-
-          transform:
-            translateX(-50%)
-            rotate(var(--torch-angle, 0deg))
-            scaleY(var(--torch-scale, 1));
-
-          will-change: transform;
-
-          filter: drop-shadow(
-            0 -5px 20px rgba(0, 0, 0, 0.85)
-          );
-        }
-
-        .torch-svg {
-          display: block;
-          width: 100%;
-          height: 100%;
-          overflow: visible;
-        }
-
-        .torch-lens-glow {
-          position: absolute;
-          top: 8px;
-          left: 50%;
-
-          width: 45px;
-          height: 25px;
-
-          border-radius: 50%;
-          transform: translateX(-50%);
-
-          background: rgba(255, 232, 188, 0.35);
-
-          filter: blur(13px);
-
-          box-shadow:
-            0 0 24px 10px rgba(255, 218, 157, 0.2);
-
-          pointer-events: none;
-        }
-
-        /* ======================================
-           HEADER HUD
-        ====================================== */
-
         .scene-header {
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          z-index: 25;
-
-          padding: 29px 42px;
-
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-
+          position: absolute; top: 0; left: 0; right: 0; z-index: 25;
+          padding: 29px 42px; display: flex; justify-content: space-between; align-items: center;
           pointer-events: none;
         }
-
-        .brand-mark {
-          display: flex;
-          gap: 11px;
-          align-items: center;
-          color: #d9c9ad;
-          text-decoration: none;
-          pointer-events: auto;
-        }
-
+        .brand-mark { display: flex; gap: 11px; align-items: center; color: #d9c9ad; }
         .brand-symbol {
-          width: 35px;
-          height: 35px;
-
-          display: grid;
-          place-items: center;
-
-          border: 1px solid rgba(220, 198, 160, 0.52);
-
-          font-family: Georgia, serif;
-          font-size: 16px;
+          width: 35px; height: 35px; display: grid; place-items: center;
+          border: 1px solid rgba(220,198,160,.52); font: 16px Georgia,serif;
         }
-
-        .brand-name {
-          font-family: monospace;
-          font-size: 9px;
-          letter-spacing: 2px;
-        }
-
+        .brand-name { font: 9px monospace; letter-spacing: 2px; }
         .header-status {
-          display: flex;
-          align-items: center;
-          gap: 9px;
-
-          color: rgba(223, 212, 192, 0.56);
-
-          font-family: monospace;
-          font-size: 8px;
-          letter-spacing: 1.6px;
+          display: flex; align-items: center; gap: 9px; color: rgba(223,212,192,.56);
+          font: 8px monospace; letter-spacing: 1.6px;
         }
-
         .status-light {
-          width: 6px;
-          height: 6px;
-
-          border-radius: 50%;
-          background: #b8a078;
-
-          box-shadow: 0 0 9px #d5b47b;
-
-          animation: status-pulse 2.5s ease-in-out infinite;
+          width: 6px; height: 6px; border-radius: 50%; background: #b8a078;
+          box-shadow: 0 0 9px #d5b47b; animation: status-pulse 2.5s ease-in-out infinite;
         }
-
-        @keyframes status-pulse {
-          0%, 100% {
-            opacity: 0.45;
-          }
-
-          50% {
-            opacity: 1;
-          }
-        }
-
-        /* ======================================
-           INTRO
-        ====================================== */
-
+        @keyframes status-pulse { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
         .scene-intro {
-          position: absolute;
-
-          left: 50%;
-          top: 6%;
-
-          width: 440px;
-          max-width: 75%;
-
-          z-index: 12;
-
-          transform: translateX(-50%);
-
-          text-align: center;
-          pointer-events: none;
-
+          position: absolute; left: 50%; top: 6%; width: 440px; max-width: 75%; z-index: 12;
+          transform: translateX(-50%); text-align: center; pointer-events: none;
           text-shadow: 0 2px 15px #000;
         }
-
-        .intro-eyebrow {
-          color: #b6a281;
-
-          font-family: monospace;
-          font-size: 8px;
-          letter-spacing: 3px;
-        }
-
+        .intro-eyebrow { color: #b6a281; font: 8px monospace; letter-spacing: 3px; }
         .scene-intro h1 {
-          margin: 13px 0 9px;
-
-          color: #e4d9c4;
-
-          font-family: Georgia, "Times New Roman", serif;
-          font-size: clamp(27px, 3.8vw, 47px);
-          font-weight: 400;
-          line-height: 1.05;
+          margin: 13px 0 9px; color: #e4d9c4; font: 400 clamp(27px,3.8vw,47px)/1.05 Georgia,serif;
           letter-spacing: -1.5px;
         }
-
-        .scene-intro h1 span {
-          color: #bba782;
-          font-style: italic;
-        }
-
-        .scene-intro p {
-          margin: 0;
-
-          color: rgba(224, 212, 190, 0.57);
-
-          font-size: 10px;
-          letter-spacing: 0.25px;
-        }
-
-        /* ======================================
-           INSTRUCTION
-        ====================================== */
-
+        .scene-intro h1 span { color: #bba782; font-style: italic; }
+        .scene-intro p { margin: 0; color: rgba(224,212,190,.65); font-size: 10px; }
         .scene-instruction {
-          position: absolute;
-          left: 50%;
-          bottom: 42px;
-
-          z-index: 25;
-
-          transform: translateX(-50%);
-
-          display: flex;
-          align-items: center;
-          gap: 10px;
-
-          width: max-content;
-
-          color: rgba(221, 207, 181, 0.7);
-
-          font-family: monospace;
-          font-size: 8px;
-          letter-spacing: 1.5px;
-
-          pointer-events: none;
-
-          text-shadow: 0 2px 12px #000;
+          position: absolute; left: 50%; bottom: 39px; z-index: 25; transform: translateX(-50%);
+          display: flex; align-items: center; gap: 10px; width: max-content;
+          color: rgba(221,207,181,.78); font: 8px monospace; letter-spacing: 1.4px;
+          pointer-events: none; text-shadow: 0 2px 12px #000;
         }
-
-        .instruction-icon {
-          font-size: 15px;
-          color: #cbb48a;
-        }
-
+        .instruction-icon { font-size: 15px; color: #cbb48a; }
         .scene-footer {
-          position: absolute;
-          left: 42px;
-          right: 42px;
-          bottom: 21px;
-
-          z-index: 25;
-
-          display: flex;
-          justify-content: space-between;
-
-          color: rgba(220, 207, 184, 0.32);
-
-          font-family: monospace;
-          font-size: 7px;
-          letter-spacing: 1.6px;
-
-          pointer-events: none;
+          position: absolute; left: 42px; right: 42px; bottom: 19px; z-index: 25;
+          display: flex; justify-content: space-between; color: rgba(220,207,184,.38);
+          font: 7px monospace; letter-spacing: 1.6px; pointer-events: none;
         }
-
-        /* ======================================
-           TABLETS
-        ====================================== */
-
-        @media (max-width: 1050px) {
-          .card--about {
-            left: 5%;
-            top: 23%;
-            width: 190px;
-            height: 275px;
-          }
-
-          .card--projects {
-            left: 34%;
-            top: 17%;
-            width: 290px;
-            height: 255px;
-          }
-
-          .card--skills {
-            right: 4%;
-            top: 29%;
-            width: 195px;
-            height: 235px;
-          }
-
-          .card--experience {
-            left: 12%;
-            bottom: 11%;
-          }
-
-          .card--contact {
-            right: 9%;
-            bottom: 12%;
-          }
+        .transition-overlay {
+          position: absolute; inset: 0; z-index: 40; background: #020103;
+          opacity: 0; pointer-events: none; will-change: opacity;
         }
-
-        /* ======================================
-           MOBILE
-        ====================================== */
-
         @media (max-width: 700px) {
-          .horror-portfolio {
-            min-height: 600px;
-          }
-
-          .scene-header {
-            padding: 19px 18px;
-          }
-
-          .brand-symbol {
-            width: 29px;
-            height: 29px;
-          }
-
-          .brand-name {
-            font-size: 7px;
-            letter-spacing: 1.2px;
-          }
-
-          .header-status {
-            font-size: 6px;
-            letter-spacing: 0.8px;
-          }
-
-          .scene-intro {
-            top: 9%;
-            max-width: 90%;
-          }
-
-          .scene-intro h1 {
-            font-size: clamp(26px, 8vw, 37px);
-          }
-
-          .scene-intro p {
-            font-size: 9px;
-          }
-
-          .card-content {
-            padding: 10px !important;
-          }
-
-          .card-topline {
-            font-size: 6px;
-            letter-spacing: 0.7px;
-            margin-bottom: 7px;
-          }
-
-          .card-heading h2 {
-            font-size: 16px !important;
-          }
-
-          .card-heading p {
-            font-size: 8px;
-          }
-
-          .card-bottom {
-            left: 10px;
-            right: 10px;
-            bottom: 8px;
-            padding-top: 6px;
-            font-size: 6px;
-          }
-
-          .card-arrow {
-            font-size: 14px;
-          }
-
-          .hanging-thread {
-            height: 34px;
-            top: -33px;
-          }
-
-          .card--about {
-            left: 4%;
-            top: 31%;
-            width: 42%;
-            height: 195px;
-            border-width: 5px;
-          }
-
-          .portrait-art {
-            height: 83px;
-          }
-
-          .portrait-person {
-            transform: translateX(-50%) scale(0.7);
-            transform-origin: bottom;
-          }
-
-          .portrait-window {
-            transform: scale(0.7);
-            transform-origin: top left;
-          }
-
-          .portrait-sun {
-            transform: scale(0.7);
-            transform-origin: top right;
-          }
-
-          .card--projects {
-            left: auto;
-            right: 4%;
-            top: 31%;
-            width: 44%;
-            height: 195px;
-            border-width: 4px;
-          }
-
-          .project-collage {
-            height: 74px;
-            margin: 3px 0 8px;
-          }
-
-          .window-one {
-            left: 9px;
-            top: 10px;
-            width: 100px;
-            height: 60px;
-          }
-
-          .window-two {
-            right: 7px;
-            top: 21px;
-            width: 70px;
-            height: 50px;
-          }
-
-          .card--skills {
-            left: 4%;
-            right: auto;
-            top: 57%;
-            width: 42%;
-            height: 178px;
-          }
-
-          .skills-art {
-            height: 76px;
-            padding: 6px;
-            margin-bottom: 5px;
-          }
-
-          .skill-label {
-            font-size: 6px;
-            margin-bottom: 5px;
-          }
-
-          .skill-tags {
-            gap: 3px;
-            max-width: 120px;
-          }
-
-          .skill-tags span {
-            font-size: 6px;
-            padding: 3px;
-          }
-
-          .skill-stamp {
-            display: none;
-          }
-
-          .card--experience {
-            left: auto;
-            right: 4%;
-            bottom: auto;
-            top: 57%;
-            width: 44%;
-            height: 178px;
-          }
-
-          .timeline-art {
-            height: 76px;
-            padding-top: 2px;
-          }
-
-          .timeline-entry {
-            gap: 7px;
-            margin-bottom: 8px;
-          }
-
-          .timeline-entry b {
-            font-size: 6px;
-          }
-
-          .timeline-entry small {
-            font-size: 8px;
-          }
-
-          .timeline-entry > span {
-            width: 7px;
-            height: 7px;
-          }
-
-          .card--contact {
-            right: auto;
-            left: 22%;
-            bottom: 5%;
-            width: 56%;
-            height: 150px;
-          }
-
-          .contact-art {
-            height: 55px;
-          }
-
-          .envelope {
-            transform: scale(0.77);
-          }
-
-          .contact-mark {
-            right: 12px;
-            top: 0;
-          }
-
-          .scene-instruction {
-            bottom: 17px;
-            font-size: 7px;
-            letter-spacing: 1px;
-          }
-
-          .scene-footer {
-            display: none;
-          }
-
-          .torch-rig {
-            bottom: -34px;
-            width: 115px;
-            height: 168px;
-          }
-
-          .torch-lens-glow {
-            width: 34px;
-            height: 20px;
-          }
+          .scene-header { padding: 18px; }
+          .brand-symbol { width: 29px; height: 29px; }
+          .brand-name { font-size: 7px; letter-spacing: 1.2px; }
+          .header-status { font-size: 6px; letter-spacing: .8px; }
+          .scene-intro { top: 9%; max-width: 90%; }
+          .scene-intro h1 { font-size: clamp(26px,8vw,37px); }
+          .scene-intro p { font-size: 9px; }
+          .scene-instruction { bottom: 17px; font-size: 6px; letter-spacing: .8px; }
+          .scene-footer { display: none; }
         }
-
-        /* ======================================
-           SHORT DESKTOP SCREENS
-        ====================================== */
-
-        @media (max-height: 720px) and (min-width: 701px) {
-          .scene-intro {
-            top: 4%;
-          }
-
-          .card--about {
-            top: 24%;
-            height: 245px;
-          }
-
-          .card--projects {
-            top: 16%;
-            height: 230px;
-          }
-
-          .card--skills {
-            top: 25%;
-            height: 215px;
-          }
-
-          .card--experience {
-            bottom: 8%;
-            height: 190px;
-          }
-
-          .card--contact {
-            bottom: 8%;
-            height: 180px;
-          }
-        }
-
-        /* ======================================
-           ACCESSIBILITY
-        ====================================== */
-
         @media (prefers-reduced-motion: reduce) {
-          .portfolio-card,
-          .portfolio-card *,
-          .status-light {
-            animation-duration: 0.01ms !important;
-            animation-iteration-count: 1 !important;
-            transition-duration: 0.01ms !important;
-          }
+          .status-light { animation: none; }
         }
       `}</style>
     </main>
