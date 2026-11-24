@@ -361,33 +361,33 @@ function makeTorch(scene) {
   group.position.set(0, -0.48, -0.78);
 
   const metal = new THREE.MeshStandardMaterial({
-    color: 0x555b62,
+    color: 0x62666b,
     metalness: 0.82,
-    roughness: 0.3,
+    roughness: 0.27,
   });
 
   const darkMetal = new THREE.MeshStandardMaterial({
-    color: 0x252a30,
-    metalness: 0.68,
-    roughness: 0.36,
+    color: 0x34383e,
+    metalness: 0.72,
+    roughness: 0.32,
   });
 
   const rubber = new THREE.MeshStandardMaterial({
-    color: 0x222327,
+    color: 0x24272b,
     roughness: 0.85,
   });
 
   const glass = new THREE.MeshStandardMaterial({
-    color: 0xffe6b8,
-    emissive: 0xffcc75,
-    emissiveIntensity: 4.5,
-    metalness: 0.2,
-    roughness: 0.1,
+    color: 0xffdf9e,
+    emissive: 0xffbb60,
+    emissiveIntensity: 3.5,
+    metalness: 0.35,
+    roughness: 0.12,
   });
 
   const glove = new THREE.MeshStandardMaterial({
     color: 0x29252a,
-    roughness: 0.9,
+    roughness: 0.95,
   });
   const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.14, 1.22, 24), rubber);
   handle.position.y = 0.66;
@@ -449,19 +449,19 @@ function makeGun(scene) {
   group.visible = true;
 
   const steel = new THREE.MeshStandardMaterial({
-    color: 0x59616b,
+    color: 0x626a72,
     metalness: 0.86,
-    roughness: 0.28,
+    roughness: 0.25,
   });
 
   const darkSteel = new THREE.MeshStandardMaterial({
-    color: 0x272b31,
-    metalness: 0.72,
-    roughness: 0.35,
+    color: 0x30343a,
+    metalness: 0.75,
+    roughness: 0.32,
   });
 
   const gripMat = new THREE.MeshStandardMaterial({
-    color: 0x29221d,
+    color: 0x29211c,
     roughness: 0.88,
   });
 
@@ -565,7 +565,14 @@ export default function Home() {
     scene.add(ambient);
     const hemi = new THREE.HemisphereLight(0xc9b894, 0x171116, 0.18);
     scene.add(hemi);
+    // Subtle light on the foreground equipment.
+    const equipmentFill = new THREE.PointLight(0xc4b39a, 2.8, 5, 2);
+    equipmentFill.position.set(0.2, -1.4, 0.5);
+    scene.add(equipmentFill);
 
+    const equipmentRim = new THREE.PointLight(0x77849b, 1.6, 4, 2);
+    equipmentRim.position.set(1.5, -1.0, 0.8);
+    scene.add(equipmentRim);
     // The wall is physically behind the boards on negative Z.
     const wallTexture = makeWallTexture();
     const wall = new THREE.Mesh(
@@ -655,7 +662,7 @@ export default function Home() {
 
     const torch = makeTorch(scene);
     const torchBase = torch.group.position.clone();
-    const torchSpot = new THREE.SpotLight(0xffdfae, 115, 18, 0.215, 0.82, 1.45);
+    const torchSpot = new THREE.SpotLight(0xffdfae, 150, 18, 0.32, 0.82, 1.45);
     torchSpot.castShadow = true;
     torchSpot.shadow.mapSize.set(1024, 1024);
     torchSpot.shadow.bias = -0.00015;
@@ -732,8 +739,10 @@ export default function Home() {
     // -----------------------------------------------
 
     const gun = makeGun(scene);
-    const gunStart = new THREE.Vector3(0.75, -0.62, -1.05);
-    const gunReady = new THREE.Vector3(0.75, -0.62, -1.05);
+    // Gun remains in the foreground, alongside the flashlight.
+    // Its barrel axis is the local +Y axis.
+    const gunStart = new THREE.Vector3(0.48, -1.05, -1.15);
+    const gunReady = new THREE.Vector3(0.48, -1.05, -1.15);
     const gunState = {
       phase: "idle",
       startTime: 0,
@@ -901,28 +910,34 @@ export default function Home() {
 
     function beginShot(card) {
       if (
-        transitionStarted ||
         gunState.phase !== "idle" ||
         bats.length > 0 ||
         card.broken ||
         navigated
       ) return;
 
-      transitionStarted = true;
       const target = card.group.getWorldPosition(new THREE.Vector3());
-      const direction = target.clone().sub(gunReady).normalize();
-      const aimQuaternion = new THREE.Quaternion().setFromUnitVectors(UP, direction);
 
-      gunState.phase = "draw";
-      gunState.startTime = performance.now();
-      gunState.phaseTime = performance.now();
-      gunState.card = card;
       gunState.target = target;
+      gunState.card = card;
+
+      // Gun barrel points along local +Y.
+      const direction = target.clone().sub(gun.position).normalize();
+
       gunState.direction.copy(direction);
-      gunState.aimQuaternion.copy(aimQuaternion);
-      gun.visible = true;
-      gun.position.copy(gunStart);
-      gun.quaternion.identity();
+
+      gunState.aimQuaternion.setFromUnitVectors(UP, direction);
+
+      gunState.phase = "fire";
+      gunState.phaseTime = performance.now();
+
+      gun.quaternion.copy(gunState.aimQuaternion);
+      gun.updateMatrixWorld(true);
+
+      const muzzlePosition = new THREE.Vector3(0, 1.56, 0);
+      gun.localToWorld(muzzlePosition);
+
+      createBullet(muzzlePosition, target);
     }
 
     function updateGun(now) {
@@ -1034,27 +1049,24 @@ export default function Home() {
         const bat = bats[i];
         bat.age += delta;
 
-        const flap = Math.sin(bat.age * 38) * 1.05;
+        const flap = Math.sin(bat.age * 27) * 0.90;
         bat.leftWing.rotation.z = flap;
         bat.rightWing.rotation.z = -flap;
 
         if (bat.hero) {
-          const progress = clamp(bat.age / 0.26);
+          // Much faster close-up flight.
+          const progress = clamp(bat.age / 0.50);
           const eased = smoothstep(progress);
 
-          const destination = new THREE.Vector3(
-            (Math.random() - 0.5) * 0.08,
-            (Math.random() - 0.5) * 0.08,
-            -0.38
-          );
+          const destination = new THREE.Vector3(0, 0, -0.38);
 
-          bat.group.position.lerpVectors(
-            bat.start,
-            destination,
-            eased
-          );
+          bat.group.position.lerpVectors(bat.start, destination, eased);
 
-          bat.group.scale.setScalar(0.42 + progress * 8.0);
+          // Random movement while rushing toward the camera.
+          bat.group.position.x += Math.sin(bat.age * 45) * 0.13 * (1 - progress);
+          bat.group.position.y += Math.cos(bat.age * 38) * 0.12 * (1 - progress);
+
+          bat.group.scale.setScalar(0.42 + progress * 3.65);
 
           if (overlayRef.current) {
             overlayRef.current.style.opacity = String(
@@ -1072,7 +1084,7 @@ export default function Home() {
               overlayRef.current.style.opacity = "0";
             }
 
-            router.push(destinationRoute);
+            router.replace(destinationRoute);
           }
         } else {
           // Faster and more unpredictable bat movement.
@@ -1082,19 +1094,16 @@ export default function Home() {
 
           bat.velocity.clampLength(0, 18);
 
+          // Rapid, randomized flight with varying direction.
           bat.group.position.addScaledVector(bat.velocity, delta * 8);
 
-          bat.group.rotation.z +=
-            Math.sin(bat.age * 18) * delta * 1.2;
+          bat.group.position.x += Math.sin(bat.age * 23 + i) * delta * 2.2;
+          bat.group.position.y += Math.cos(bat.age * 19 + i * 1.7) * delta * 2.0;
 
-          bat.group.rotation.x =
-            Math.sin(bat.age * 14) * 0.25;
-
-          bat.group.rotation.y =
-            Math.cos(bat.age * 12) * 0.25;
+          bat.group.rotation.z += Math.sin(bat.age * 15 + i) * delta * 0.75;
 
           bat.group.scale.setScalar(
-            bat.baseScale * (1 + Math.sin(bat.age * 24) * 0.16)
+            bat.baseScale * (1 + Math.sin(bat.age * 16 + i) * 0.12)
           );
 
           if (bat.age > 0.7) {
@@ -1218,12 +1227,17 @@ export default function Home() {
     frameId = requestAnimationFrame(animate);
 
     return () => {
+      if (overlayRef.current) {
+        overlayRef.current.style.opacity = "0";
+      }
       cancelAnimationFrame(frameId);
       resizeObserver.disconnect();
       window.removeEventListener("resize", resize);
       renderer.domElement.removeEventListener("pointermove", handlePointerMove);
       renderer.domElement.removeEventListener("pointerdown", handlePointerDown);
-
+      // Clear bat and debris references on scene teardown.
+      bats.length = 0;
+      debris.length = 0;
       scene.traverse((object) => {
         if (object.isMesh || object.isLine) {
           object.geometry?.dispose();
@@ -1231,9 +1245,7 @@ export default function Home() {
           else object.material?.dispose();
         }
       });
-      if (overlayRef.current) {
-        overlayRef.current.style.opacity = "0";
-      }
+
       renderer.dispose();
       renderer.domElement.remove();
     };
