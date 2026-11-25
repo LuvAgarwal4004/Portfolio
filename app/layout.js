@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "HITK Stationary",
+  title: "Portfolio",
   description: "Get your style up!",
 };
 
