@@ -361,47 +361,40 @@ function makeTorch(scene) {
   group.position.set(-0.04, -0.65, -0.82);
 
   const metal = new THREE.MeshStandardMaterial({
-    color: 0x5c7085,
-    metalness: 0.50,
-    roughness: 0.34,
-  });
-
-  const brass = new THREE.MeshStandardMaterial({
-    color: 0xd19a47,
-    metalness: 0.58,
-    roughness: 0.28,
+    color: 0x36393e,
+    metalness: 0.65,
+    roughness: 0.44,
   });
 
   const darkMetal = new THREE.MeshStandardMaterial({
-    color: 0x424d5c,
-    metalness: 0.48,
-    roughness: 0.36,
+    color: 0x1e2024,
+    metalness: 0.60,
+    roughness: 0.48,
   });
 
   const rubber = new THREE.MeshStandardMaterial({
-    color: 0x2b3442,
-    roughness: 0.78,
+    color: 0x131518,
+    roughness: 0.94,
   });
 
   const switchMat = new THREE.MeshStandardMaterial({
-    color: 0xd94b34,
-    emissive: 0x6b1d10,
-    emissiveIntensity: 0.85,
-    roughness: 0.45,
+    color: 0x282b30,
+    roughness: 0.58,
   });
 
   const glass = new THREE.MeshStandardMaterial({
-    color: 0xffe5a8,
-    emissive: 0xffb84d,
-    emissiveIntensity: 3.8,
+    color: 0xffe0a3,
+    emissive: 0xffb347,
+    emissiveIntensity: 2.6,
     metalness: 0.25,
-    roughness: 0.12,
+    roughness: 0.14,
   });
 
   const glove = new THREE.MeshStandardMaterial({
-    color: 0x5a3e30,
-    roughness: 0.82,
+    color: 0x171518,
+    roughness: 0.95,
   });
+
   const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.14, 1.22, 24), rubber);
   handle.position.y = 0.66;
   handle.castShadow = true;
@@ -412,14 +405,13 @@ function makeTorch(scene) {
   group.add(handleCore);
 
   for (let i = 0; i < 8; i++) {
-    const ringMat = i % 2 === 0 ? brass : darkMetal;
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.012, 6, 24), ringMat);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.012, 6, 24), darkMetal);
     ring.rotation.x = Math.PI / 2;
     ring.position.y = 0.27 + i * 0.115;
     group.add(ring);
   }
 
-  const powerSwitch = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.09, 0.045), switchMat);
+  const powerSwitch = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.085, 0.04), switchMat);
   powerSwitch.position.set(0, 1.16, 0.115);
   group.add(powerSwitch);
 
@@ -428,7 +420,7 @@ function makeTorch(scene) {
   head.castShadow = true;
   group.add(head);
 
-  const bezel = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.10, 32), brass);
+  const bezel = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.10, 32), metal);
   bezel.position.y = 1.64;
   group.add(bezel);
 
@@ -463,116 +455,187 @@ function makeTorch(scene) {
 }
 
 function makeGun(scene) {
+  // Semi-auto pistol oriented with +Y forward, +Z up, +-X width.
   const group = new THREE.Group();
   group.visible = true;
-  group.scale.setScalar(0.85);
+  group.scale.setScalar(0.88);
 
-  const steel = new THREE.MeshStandardMaterial({
-    color: 0x74889e,
-    metalness: 0.50,
-    roughness: 0.30,
+  const slideMat = new THREE.MeshStandardMaterial({
+    color: 0x3f444a,
+    metalness: 0.66,
+    roughness: 0.40,
   });
 
-  const darkSteel = new THREE.MeshStandardMaterial({
-    color: 0x3e4754,
-    metalness: 0.48,
-    roughness: 0.36,
-  });
-
-  const brassMat = new THREE.MeshStandardMaterial({
-    color: 0xd29b48,
-    metalness: 0.58,
-    roughness: 0.28,
+  const frameMat = new THREE.MeshStandardMaterial({
+    color: 0x1f2226,
+    metalness: 0.56,
+    roughness: 0.48,
   });
 
   const gripMat = new THREE.MeshStandardMaterial({
-    color: 0x7c4a2d,
-    metalness: 0.05,
-    roughness: 0.68,
+    color: 0x1c1816,
+    metalness: 0.04,
+    roughness: 0.90,
   });
 
   const handMat = new THREE.MeshStandardMaterial({
-    color: 0x5c3e2f,
-    roughness: 0.82,
+    color: 0x171518,
+    roughness: 0.94,
   });
 
-  const sightGlowMat = new THREE.MeshStandardMaterial({
-    color: 0xff7b39,
-    emissive: 0xff5a1f,
-    emissiveIntensity: 1.8,
-    roughness: 0.3,
+  const portMat = new THREE.MeshStandardMaterial({
+    color: 0x090a0c,
+    roughness: 0.92,
   });
 
-  const slide = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.88, 0.25), steel);
-  slide.position.set(0, 0.86, 0);
-  group.add(slide);
+  const sightDotMat = new THREE.MeshStandardMaterial({
+    color: 0x525049,
+    roughness: 0.72,
+  });
 
-  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.94, 20), darkSteel);
-  barrel.position.set(0, 1.05, 0);
-  group.add(barrel);
+  // Lower receiver & underbarrel dustcover rail.
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(0.145, 0.92, 0.105), frameMat);
+  frame.position.set(0, 0.42, 0.01);
+  group.add(frame);
 
-  const muzzle = new THREE.Mesh(new THREE.CylinderGeometry(0.115, 0.115, 0.08, 24), brassMat);
-  muzzle.position.set(0, 1.48, 0);
-  group.add(muzzle);
+  const underRail = new THREE.Mesh(new THREE.BoxGeometry(0.118, 0.34, 0.045), frameMat);
+  underRail.position.set(0, 0.68, -0.055);
+  group.add(underRail);
 
-  const muzzleHole = new THREE.Mesh(new THREE.CylinderGeometry(0.068, 0.068, 0.04, 24), new THREE.MeshBasicMaterial({ color: 0x050608 }));
-  muzzleHole.position.set(0, 1.52, 0);
-  group.add(muzzleHole);
+  // Moving upper slide sub-group (animates blowback on shot & rack on equip).
+  const slideGroup = new THREE.Group();
 
-  const rearSight = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.09, 0.09), darkSteel);
-  rearSight.position.set(0, 1.24, 0.14);
-  group.add(rearSight);
+  const slide = new THREE.Mesh(new THREE.BoxGeometry(0.155, 0.96, 0.135), slideMat);
+  slide.position.set(0, 0.44, 0.125);
+  slideGroup.add(slide);
 
-  const rearSightDot = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 8), sightGlowMat);
-  rearSightDot.position.set(0, 1.24, 0.186);
-  group.add(rearSightDot);
+  const slideTop = new THREE.Mesh(new THREE.BoxGeometry(0.122, 0.95, 0.026), slideMat);
+  slideTop.position.set(0, 0.44, 0.20);
+  slideGroup.add(slideTop);
 
-  const frontSight = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 0.08), darkSteel);
-  frontSight.position.set(0, 1.45, 0.12);
-  group.add(frontSight);
+  const ejectionPort = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.20, 0.032), portMat);
+  ejectionPort.position.set(0.054, 0.50, 0.198);
+  slideGroup.add(ejectionPort);
 
-  const frontSightDot = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 8), sightGlowMat);
-  frontSightDot.position.set(0, 1.45, 0.162);
-  group.add(frontSightDot);
-
-  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.31, 0.63, 0.27), gripMat);
-  grip.position.set(-0.055, 0.12, 0);
-  grip.rotation.z = -0.16;
-  group.add(grip);
-
-  const gripPanel = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.49, 0.22), darkSteel);
-  gripPanel.position.set(-0.22, 0.12, 0);
-  gripPanel.rotation.z = -0.16;
-  group.add(gripPanel);
-
-  const triggerGuard = new THREE.Mesh(
-    new THREE.TorusGeometry(0.15, 0.025, 8, 20, Math.PI),
-    steel
-  );
-  triggerGuard.position.set(0.04, 0.38, 0.03);
-  triggerGuard.rotation.z = Math.PI;
-  group.add(triggerGuard);
-
-  const trigger = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.18, 0.04), brassMat);
-  trigger.position.set(0.045, 0.32, 0.08);
-  trigger.rotation.z = -0.2;
-  group.add(trigger);
-
-  const hand = new THREE.Mesh(new THREE.CapsuleGeometry(0.15, 0.42, 5, 10), handMat);
-  hand.position.set(-0.055, -0.02, 0.13);
-  hand.rotation.z = -0.12;
-  group.add(hand);
-
-  // Small metallic screws and slide grooves.
-  for (const z of [-0.13, 0.13]) {
-    const screw = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.014, 12), brassMat);
-    screw.rotation.x = Math.PI / 2;
-    screw.position.set(0.13, 0.68, z);
-    group.add(screw);
+  for (let i = 0; i < 5; i++) {
+    const serration = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.014, 0.09), frameMat);
+    serration.position.set(0, 0.02 + i * 0.032, 0.125);
+    slideGroup.add(serration);
   }
 
+  const rearSightBase = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.055, 0.025), frameMat);
+  rearSightBase.position.set(0, 0.01, 0.218);
+  slideGroup.add(rearSightBase);
+
+  for (const x of [-0.035, 0.035]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.026, 0.05, 0.042), frameMat);
+    post.position.set(x, 0.01, 0.238);
+    slideGroup.add(post);
+
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 6), sightDotMat);
+    dot.position.set(x, -0.016, 0.244);
+    slideGroup.add(dot);
+  }
+
+  const frontSight = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.055, 0.042), frameMat);
+  frontSight.position.set(0, 0.86, 0.232);
+  slideGroup.add(frontSight);
+
+  const frontDot = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 6), sightDotMat);
+  frontDot.position.set(0, 0.831, 0.242);
+  slideGroup.add(frontDot);
+
+  group.add(slideGroup);
+
+  // Stationary inner barrel, bore, guide rod, and rear hammer.
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.038, 0.92, 16), frameMat);
+  barrel.position.set(0, 0.50, 0.125);
+  group.add(barrel);
+
+  const muzzleHole = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.026, 0.026, 0.018, 16),
+    new THREE.MeshBasicMaterial({ color: 0x040507 })
+  );
+  muzzleHole.position.set(0, 0.956, 0.125);
+  group.add(muzzleHole);
+
+  const guideRod = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.12, 12), slideMat);
+  guideRod.position.set(0, 0.87, 0.04);
+  group.add(guideRod);
+
+  const hammer = new THREE.Mesh(new THREE.BoxGeometry(0.034, 0.068, 0.065), frameMat);
+  hammer.position.set(0, -0.055, 0.095);
+  hammer.rotation.x = 0.35;
+  group.add(hammer);
+
+  // Trigger guard & trigger.
+  const guardBottom = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.23, 0.024), frameMat);
+  guardBottom.position.set(0, 0.24, -0.145);
+  group.add(guardBottom);
+
+  const guardFront = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.026, 0.13), frameMat);
+  guardFront.position.set(0, 0.35, -0.085);
+  guardFront.rotation.x = 0.22;
+  group.add(guardFront);
+
+  const trigger = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.034, 0.105), slideMat);
+  trigger.position.set(0, 0.245, -0.065);
+  trigger.rotation.x = -0.35;
+  group.add(trigger);
+
+  // Angled pistol grip, side panels, and magazine baseplate.
+  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.132, 0.205, 0.50), frameMat);
+  grip.position.set(0, -0.02, -0.24);
+  grip.rotation.x = -0.28;
+  group.add(grip);
+
+  const gripPanels = new THREE.Mesh(new THREE.BoxGeometry(0.142, 0.16, 0.40), gripMat);
+  gripPanels.position.set(0, -0.02, -0.24);
+  gripPanels.rotation.x = -0.28;
+  group.add(gripPanels);
+
+  const magBase = new THREE.Mesh(new THREE.BoxGeometry(0.142, 0.22, 0.042), frameMat);
+  magBase.position.set(0, -0.092, -0.49);
+  magBase.rotation.x = -0.28;
+  group.add(magBase);
+
+  // Dark gloved hand & forearm gripping the pistol.
+  const palm = new THREE.Mesh(new THREE.CapsuleGeometry(0.086, 0.24, 6, 12), handMat);
+  palm.position.set(0.006, -0.05, -0.17);
+  palm.rotation.x = 1.29;
+  group.add(palm);
+
+  for (let i = 0; i < 3; i++) {
+    const finger = new THREE.Mesh(new THREE.CapsuleGeometry(0.028, 0.13, 4, 8), handMat);
+    finger.position.set(0, 0.068 - i * 0.026, -0.145 - i * 0.085);
+    finger.rotation.z = Math.PI / 2;
+    group.add(finger);
+  }
+
+  const thumb = new THREE.Mesh(new THREE.CapsuleGeometry(0.028, 0.13, 4, 8), handMat);
+  thumb.position.set(-0.084, 0.07, -0.01);
+  thumb.rotation.x = 0.20;
+  thumb.rotation.z = -0.10;
+  group.add(thumb);
+
+  const triggerFinger = new THREE.Mesh(new THREE.CapsuleGeometry(0.024, 0.16, 4, 8), handMat);
+  triggerFinger.position.set(0.078, 0.14, -0.055);
+  triggerFinger.rotation.x = -0.18;
+  triggerFinger.rotation.z = 0.10;
+  group.add(triggerFinger);
+
+  const forearm = new THREE.Mesh(new THREE.CapsuleGeometry(0.095, 0.48, 6, 12), handMat);
+  forearm.position.set(0.03, -0.28, -0.34);
+  forearm.rotation.x = 0.45;
+  group.add(forearm);
+
   scene.add(group);
-  return group;
+  return {
+    group,
+    slideGroup,
+    barrelTipLocal: new THREE.Vector3(0, 0.97, 0.125),
+    ejectionPortLocal: new THREE.Vector3(0.065, 0.50, 0.19),
+  };
 }
 
 export default function Home() {
@@ -615,25 +678,21 @@ export default function Home() {
     scene.add(ambient);
     const hemi = new THREE.HemisphereLight(0xc9b894, 0x171116, 0.18);
     scene.add(hemi);
-    // Local foreground lights (strictly bounded short distance so wall & cards stay dark).
-    const equipmentFill = new THREE.PointLight(0xffdfba, 3.6, 4.5, 1.4);
-    equipmentFill.position.set(-0.4, -0.1, 0.35);
+    // Dim local foreground lights so gun, torch, and hands keep a moody dark horror silhouette.
+    const equipmentFill = new THREE.PointLight(0xa09585, 1.35, 4.0, 1.8);
+    equipmentFill.position.set(-0.35, -0.25, 0.45);
     scene.add(equipmentFill);
 
-    const equipmentRim = new THREE.PointLight(0x8ab5eb, 2.8, 4.5, 1.4);
-    equipmentRim.position.set(0.95, 0.45, -0.35);
+    const equipmentRim = new THREE.PointLight(0x647285, 1.20, 4.0, 1.8);
+    equipmentRim.position.set(0.95, 0.35, -0.30);
     scene.add(equipmentRim);
-
-    const equipmentUnder = new THREE.PointLight(0xd99b52, 1.4, 3.5, 1.5);
-    equipmentUnder.position.set(0.0, -0.85, -0.4);
-    scene.add(equipmentUnder);
     // The wall is physically behind the boards on negative Z.
     const wallTexture = makeWallTexture();
     const wall = new THREE.Mesh(
       new THREE.PlaneGeometry(24, 13.5),
       new THREE.MeshStandardMaterial({
         map: wallTexture,
-        color: 0xc2b394,
+        color: 0xa39579,
         roughness: 0.96,
         metalness: 0,
       })
@@ -763,22 +822,37 @@ export default function Home() {
     const beamQuaternion = new THREE.Quaternion();
     const gunDirection = new THREE.Vector3();
     const gunIdleQuaternion = new THREE.Quaternion();
-    const recoilAxis = new THREE.Vector3(1, 0, 0);
+    const recoilEuler = new THREE.Euler(0, 0, 0, "YXZ");
     const recoilRotation = new THREE.Quaternion();
+    const baseAimQuat = new THREE.Quaternion();
+    const equipStartPos = new THREE.Vector3(0.56, -1.12, -0.58);
+    const equipMidPos = new THREE.Vector3(0.26, -0.24, -1.04);
+    const holsterOffsetQuat = new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(-0.78, 0.58, 0.24, "YXZ")
+    );
+    const equipMidOffsetQuat = new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(0.08, 0.24, 0.08, "YXZ")
+    );
+    const equipWorkQuat = new THREE.Quaternion();
+    const equipSnapEuler = new THREE.Euler(0, 0, 0, "YXZ");
+    const equipSnapQuat = new THREE.Quaternion();
+    const identityQuat = new THREE.Quaternion();
+    const bulletCurrent = new THREE.Vector3();
 
     // -----------------------------------------------
-    // 3D GUN: held above the torch in the foreground.
+    // 3D PISTOL: drawn above the torch on entry/reload.
     // Its barrel axis is the local +Y axis.
     // -----------------------------------------------
 
-    const gun = makeGun(scene);
-    const gunStart = new THREE.Vector3(0.16, -0.18, -1.15);
-    const gunReady = new THREE.Vector3(0.16, -0.18, -1.15);
-    gun.position.copy(gunReady);
+    const pistol = makeGun(scene);
+    const gun = pistol.group;
+    const slideGroup = pistol.slideGroup;
+    const gunReady = new THREE.Vector3(0.18, -0.14, -1.15);
+    gun.position.copy(equipStartPos);
 
     const gunState = {
-      phase: "idle",
-      startTime: 0,
+      phase: "equip",
+      shotTime: 0,
       phaseTime: 0,
       card: null,
       target: new THREE.Vector3(),
@@ -797,7 +871,9 @@ export default function Home() {
       }
 
       torchDirection.copy(aimTarget).sub(torchBase).normalize();
-      torch.group.position.copy(torchBase);
+      if (gunState.phase === "idle" || gunState.phase === "equip") {
+        torch.group.position.copy(torchBase);
+      }
       torch.group.quaternion.setFromUnitVectors(UP, torchDirection);
       torch.group.updateMatrixWorld(true);
 
@@ -831,9 +907,117 @@ export default function Home() {
 
     const debris = [];
     const bats = [];
+    const particles = [];
     let navigated = false;
     let transitionStarted = false;
-    function createBullet(start, end) {
+
+    function spawnShotEffects(muzzleStart, ejectStart, ejectRight) {
+      // Multi-layered muzzle flash: hot core, warm bloom halo, and volumetric cross flare.
+      const flashLight = new THREE.PointLight(0xffb45c, 28, 5.5, 1.8);
+      flashLight.position.copy(muzzleStart);
+      scene.add(flashLight);
+
+      const core = new THREE.Mesh(
+        new THREE.SphereGeometry(0.095, 10, 8),
+        new THREE.MeshBasicMaterial({ color: 0xfff1c9, transparent: true, opacity: 0.96 })
+      );
+      core.position.copy(muzzleStart);
+      scene.add(core);
+
+      const halo = new THREE.Mesh(
+        new THREE.SphereGeometry(0.22, 12, 10),
+        new THREE.MeshBasicMaterial({
+          color: 0xff9436,
+          transparent: true,
+          opacity: 0.58,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        })
+      );
+      halo.position.copy(muzzleStart);
+      scene.add(halo);
+
+      const cross = new THREE.Group();
+      cross.position.copy(muzzleStart);
+      cross.quaternion.copy(gunState.aimQuaternion);
+      cross.rotateY(Math.random() * Math.PI);
+      const flareMat = new THREE.MeshBasicMaterial({
+        color: 0xffe1a8,
+        transparent: true,
+        opacity: 0.85,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      });
+      const flareGeo = new THREE.PlaneGeometry(0.44, 0.085);
+      const flareA = new THREE.Mesh(flareGeo, flareMat);
+      const flareB = new THREE.Mesh(flareGeo.clone(), flareMat.clone());
+      flareB.rotation.y = Math.PI / 2;
+      cross.add(flareA, flareB);
+      scene.add(cross);
+
+      // Expanding dark gun-smoke puffs drifting from the muzzle.
+      for (let i = 0; i < 5; i++) {
+        const smokeMat = new THREE.MeshBasicMaterial({
+          color: 0x525256,
+          transparent: true,
+          opacity: 0.24,
+          depthWrite: false,
+        });
+        const puff = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), smokeMat);
+        puff.position.copy(muzzleStart).addScaledVector(gunState.direction, 0.06 + i * 0.05);
+        scene.add(puff);
+        particles.push({
+          kind: "smoke",
+          mesh: puff,
+          velocity: gunState.direction.clone()
+            .multiplyScalar(0.85 + Math.random() * 1.1)
+            .add(new THREE.Vector3(
+              (Math.random() - 0.5) * 0.45,
+              0.38 + Math.random() * 0.45,
+              (Math.random() - 0.5) * 0.35
+            )),
+          spin: new THREE.Vector3(0, 0, 0),
+          gravity: 0,
+          age: 0,
+          life: 0.48 + Math.random() * 0.18,
+          baseOpacity: 0.24,
+        });
+      }
+
+      // Spent brass casing tumbling out of the ejection port.
+      const casing = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.013, 0.013, 0.048, 8),
+        new THREE.MeshStandardMaterial({
+          color: 0x6b5834,
+          metalness: 0.65,
+          roughness: 0.42,
+        })
+      );
+      casing.position.copy(ejectStart);
+      casing.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+      scene.add(casing);
+      particles.push({
+        kind: "casing",
+        mesh: casing,
+        velocity: ejectRight.clone()
+          .multiplyScalar(1.6 + Math.random() * 0.6)
+          .add(new THREE.Vector3(0, 1.55 + Math.random() * 0.4, 0.35)),
+        spin: new THREE.Vector3(
+          14 + Math.random() * 12,
+          12 + Math.random() * 10,
+          18 + Math.random() * 12
+        ),
+        gravity: 9.2,
+        age: 0,
+        life: 1.05,
+        baseOpacity: 1,
+      });
+
+      return { light: flashLight, core, halo, cross };
+    }
+
+    function createBullet(start, end, ejectStart, ejectRight) {
       const bulletMaterial = new THREE.MeshStandardMaterial({
         color: 0xffd08a,
         emissive: 0xff7b24,
@@ -841,7 +1025,7 @@ export default function Home() {
         metalness: 0.25,
         roughness: 0.2,
       });
-      const bullet = new THREE.Mesh(new THREE.SphereGeometry(0.055, 12, 10), bulletMaterial);
+      const bullet = new THREE.Mesh(new THREE.SphereGeometry(0.045, 12, 10), bulletMaterial);
       bullet.position.copy(start);
       scene.add(bullet);
 
@@ -853,20 +1037,9 @@ export default function Home() {
       );
       scene.add(tracer);
 
-      const flash = new THREE.PointLight(0xffa43b, 18, 3, 2);
-      flash.position.copy(start);
-      scene.add(flash);
-
-      const flashBall = new THREE.Mesh(
-        new THREE.SphereGeometry(0.13, 10, 8),
-        new THREE.MeshBasicMaterial({ color: 0xffd18a, transparent: true, opacity: 0.95 })
-      );
-      flashBall.position.copy(start);
-      scene.add(flashBall);
-
       gunState.bullet = bullet;
       gunState.tracer = tracer;
-      gunState.muzzleFlash = { light: flash, ball: flashBall };
+      gunState.muzzleFlash = spawnShotEffects(start, ejectStart, ejectRight);
       gunState.bulletStart.copy(start);
       gunState.target.copy(end);
     }
@@ -993,6 +1166,38 @@ export default function Home() {
       });
     }
 
+    function clearShotVisuals() {
+      if (gunState.bullet) {
+        scene.remove(gunState.bullet);
+        disposeObjectTree(gunState.bullet);
+      }
+      if (gunState.tracer) {
+        scene.remove(gunState.tracer);
+        disposeObjectTree(gunState.tracer);
+      }
+      if (gunState.muzzleFlash) {
+        scene.remove(gunState.muzzleFlash.light);
+        scene.remove(gunState.muzzleFlash.core);
+        scene.remove(gunState.muzzleFlash.halo);
+        scene.remove(gunState.muzzleFlash.cross);
+        disposeObjectTree(gunState.muzzleFlash.core);
+        disposeObjectTree(gunState.muzzleFlash.halo);
+        disposeObjectTree(gunState.muzzleFlash.cross);
+      }
+      gunState.bullet = null;
+      gunState.tracer = null;
+      gunState.muzzleFlash = null;
+    }
+
+    function startEquipAnimation() {
+      gun.visible = true;
+      gun.position.copy(equipStartPos);
+      slideGroup.position.set(0, 0, 0);
+      gunState.phase = "equip";
+      gunState.phaseTime = performance.now();
+      gun.quaternion.copy(gunIdleQuaternion).multiply(holsterOffsetQuat);
+    }
+
     function resetSceneState() {
       navigated = false;
       transitionStarted = false;
@@ -1001,19 +1206,11 @@ export default function Home() {
         overlay.style.opacity = "0";
       }
 
-      if (gunState.bullet) scene.remove(gunState.bullet);
-      if (gunState.tracer) scene.remove(gunState.tracer);
-      if (gunState.muzzleFlash) {
-        scene.remove(gunState.muzzleFlash.light);
-        scene.remove(gunState.muzzleFlash.ball);
-      }
-      gunState.bullet = null;
-      gunState.tracer = null;
-      gunState.muzzleFlash = null;
+      clearShotVisuals();
       gunState.card = null;
-      gunState.phase = "idle";
-      gun.visible = true;
-      gun.position.copy(gunReady);
+      camera.position.set(0, 0, 0);
+      camera.lookAt(0, 0, -10);
+      torch.group.position.copy(torchBase);
 
       for (let i = bats.length - 1; i >= 0; i--) {
         scene.remove(bats[i].group);
@@ -1027,12 +1224,19 @@ export default function Home() {
       }
       debris.length = 0;
 
+      for (let i = particles.length - 1; i >= 0; i--) {
+        scene.remove(particles[i].mesh);
+        disposeObjectTree(particles[i].mesh);
+      }
+      particles.length = 0;
+
       cards.forEach((card) => {
         card.broken = false;
         card.group.visible = true;
       });
 
       updateAim();
+      startEquipAnimation();
     }
 
     function beginShot(card) {
@@ -1050,23 +1254,33 @@ export default function Home() {
       gunState.target.copy(target);
       gunState.card = card;
 
-      // Gun barrel points along local +Y.
+      // Pistol barrel points along local +Y.
       const direction = target.clone().sub(gunReady).normalize();
       gunState.direction.copy(direction);
       gunState.aimQuaternion.setFromUnitVectors(UP, direction);
 
+      const now = performance.now();
       gunState.phase = "fire";
-      gunState.phaseTime = performance.now();
+      gunState.phaseTime = now;
+      gunState.shotTime = now;
 
       gun.visible = true;
       gun.position.copy(gunReady);
       gun.quaternion.copy(gunState.aimQuaternion);
+      slideGroup.position.set(0, 0, 0);
       gun.updateMatrixWorld(true);
 
-      const muzzlePosition = new THREE.Vector3(0, 1.55, 0);
+      const muzzlePosition = pistol.barrelTipLocal.clone();
       gun.localToWorld(muzzlePosition);
 
-      createBullet(muzzlePosition, target);
+      const ejectPosition = pistol.ejectionPortLocal.clone();
+      gun.localToWorld(ejectPosition);
+
+      const ejectRight = new THREE.Vector3(1, 0, 0)
+        .applyQuaternion(gunState.aimQuaternion)
+        .normalize();
+
+      createBullet(muzzlePosition, target, ejectPosition, ejectRight);
     }
 
     function updateGun(now) {
@@ -1074,77 +1288,141 @@ export default function Home() {
 
       const elapsed = now - gunState.phaseTime;
 
-      if (gunState.phase === "draw") {
-        const progress = clamp(elapsed / 360);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        gun.position.lerpVectors(gunStart, gunReady, eased);
-        gun.quaternion.identity().slerp(gunState.aimQuaternion, eased);
+      if (gunState.phase === "equip") {
+        const t = clamp(elapsed / 880);
 
-        if (progress >= 1) {
-          gun.position.copy(gunReady);
-          gun.quaternion.copy(gunState.aimQuaternion);
-          gun.updateMatrixWorld(true);
-          const muzzlePosition = new THREE.Vector3(0, 1.55, 0);
-          gun.localToWorld(muzzlePosition);
-          createBullet(muzzlePosition, gunState.target);
-          gunState.phase = "fire";
-          gunState.phaseTime = now;
+        if (t < 0.52) {
+          const p1 = t / 0.52;
+          const e1 = 1 - Math.pow(1 - p1, 3);
+          gun.position.lerpVectors(equipStartPos, equipMidPos, e1);
+          gun.position.x += Math.sin(p1 * Math.PI) * 0.12;
+          gun.position.z -= Math.sin(p1 * Math.PI) * 0.08;
+          equipWorkQuat.copy(holsterOffsetQuat).slerp(equipMidOffsetQuat, e1);
+          gun.quaternion.copy(gunIdleQuaternion).multiply(equipWorkQuat);
+          slideGroup.position.y = 0;
+        } else {
+          const p2 = (t - 0.52) / 0.48;
+          const e2 = smoothstep(p2);
+          gun.position.lerpVectors(equipMidPos, gunReady, e2);
+
+          // Chamber-check slide rack before locking smoothly above the torch.
+          let rack = 0;
+          if (p2 >= 0.06 && p2 < 0.30) {
+            rack = smoothstep((p2 - 0.06) / 0.24) * 0.14;
+          } else if (p2 >= 0.30 && p2 <= 0.56) {
+            rack = (1 - smoothstep((p2 - 0.30) / 0.26)) * 0.14;
+          }
+          slideGroup.position.y = -rack;
+
+          const snapBump = Math.sin(clamp((p2 - 0.54) / 0.32) * Math.PI) * 0.032;
+          equipWorkQuat.copy(equipMidOffsetQuat).slerp(identityQuat, e2);
+          equipSnapEuler.set(snapBump, 0, -snapBump * 0.4, "YXZ");
+          equipSnapQuat.setFromEuler(equipSnapEuler);
+          gun.quaternion.copy(gunIdleQuaternion).multiply(equipWorkQuat).multiply(equipSnapQuat);
         }
-      } else if (gunState.phase === "fire") {
-        const progress = clamp(elapsed / 155);
-        const recoil = Math.sin(progress * Math.PI) * 0.14;
-        gun.position.copy(gunReady).addScaledVector(gunState.direction, -recoil);
 
-        recoilRotation.setFromAxisAngle(
-          recoilAxis,
-          Math.sin(progress * Math.PI) * 0.10
-        );
-        gun.quaternion.copy(gunState.aimQuaternion).multiply(recoilRotation);
+        if (t >= 1) {
+          gun.position.copy(gunReady);
+          gun.quaternion.copy(gunIdleQuaternion);
+          slideGroup.position.set(0, 0, 0);
+          gunState.phase = "idle";
+        }
+        return;
+      }
+
+      // Continuous underdamped spring recoil shared smoothly across fire and recovery.
+      const rt = clamp((now - gunState.shotTime) / 480);
+      const rawKick = rt < 0.13
+        ? Math.pow(rt / 0.13, 0.45)
+        : Math.exp(-6.2 * (rt - 0.13)) * Math.cos(10.5 * (rt - 0.13));
+      const kickEnv = rawKick * (1 - smoothstep((rt - 0.78) / 0.22));
+
+      gun.position.copy(gunReady).addScaledVector(gunState.direction, -kickEnv * 0.18);
+      gun.position.y += Math.max(0, kickEnv) * 0.04;
+
+      const aimBlend = gunState.phase === "recoil" ? smoothstep(clamp(elapsed / 345)) : 0;
+      baseAimQuat.copy(gunState.aimQuaternion).slerp(gunIdleQuaternion, aimBlend);
+      recoilEuler.set(kickEnv * 0.34, -kickEnv * 0.12, kickEnv * 0.04, "YXZ");
+      recoilRotation.setFromEuler(recoilEuler);
+      gun.quaternion.copy(baseAimQuat).multiply(recoilRotation);
+
+      const slideBack = rt < 0.14
+        ? (rt / 0.14) * 0.22
+        : Math.max(0, 1 - (rt - 0.14) / 0.26) * 0.22;
+      slideGroup.position.y = -slideBack;
+
+      camera.position.set(0, kickEnv * 0.012, kickEnv * 0.032);
+      camera.rotation.set(kickEnv * 0.022, 0, -kickEnv * 0.008);
+      torch.group.position.copy(torchBase);
+      torch.group.position.y -= Math.max(0, kickEnv) * 0.025;
+
+      if (gunState.phase === "fire") {
+        const progress = clamp(elapsed / 135);
 
         if (gunState.bullet) {
-          const current = gunState.bulletStart.clone().lerp(gunState.target, progress);
-          gunState.bullet.position.copy(current);
+          bulletCurrent.copy(gunState.bulletStart).lerp(gunState.target, progress);
+          gunState.bullet.position.copy(bulletCurrent);
           const positions = gunState.tracer.geometry.attributes.position;
           positions.setXYZ(0, gunState.bulletStart.x, gunState.bulletStart.y, gunState.bulletStart.z);
-          positions.setXYZ(1, current.x, current.y, current.z);
+          positions.setXYZ(1, bulletCurrent.x, bulletCurrent.y, bulletCurrent.z);
           positions.needsUpdate = true;
         }
 
         if (gunState.muzzleFlash) {
           const fade = 1 - progress;
-          gunState.muzzleFlash.light.intensity = 18 * fade;
-          gunState.muzzleFlash.ball.scale.setScalar(0.3 + fade * 1.2);
-          gunState.muzzleFlash.ball.material.opacity = fade;
+          gunState.muzzleFlash.light.intensity = 28 * fade * fade;
+          gunState.muzzleFlash.core.scale.setScalar(0.5 + fade * 0.9);
+          gunState.muzzleFlash.core.material.opacity = fade;
+          gunState.muzzleFlash.halo.scale.setScalar(0.7 + (1 - fade) * 1.4);
+          gunState.muzzleFlash.halo.material.opacity = fade * 0.58;
+          gunState.muzzleFlash.cross.scale.setScalar(0.4 + fade * 1.1);
+          gunState.muzzleFlash.cross.children.forEach((plane) => {
+            plane.material.opacity = fade * 0.85;
+          });
         }
 
         if (progress >= 1) {
-          if (gunState.bullet) scene.remove(gunState.bullet);
-          if (gunState.tracer) scene.remove(gunState.tracer);
-          if (gunState.muzzleFlash) {
-            scene.remove(gunState.muzzleFlash.light);
-            scene.remove(gunState.muzzleFlash.ball);
-          }
-          gunState.bullet = null;
-          gunState.tracer = null;
-          gunState.muzzleFlash = null;
-
+          clearShotVisuals();
           shatterCard(gunState.card);
           releaseBats(gunState.card);
 
-          gunState.phase = "holster";
+          gunState.phase = "recoil";
           gunState.phaseTime = now;
         }
-      } else if (gunState.phase === "holster") {
-        const progress = clamp(elapsed / 330);
-        const eased = smoothstep(progress);
-        gun.position.lerpVectors(gunReady, gunStart, eased);
-        gun.quaternion.copy(gunState.aimQuaternion).slerp(gunIdleQuaternion, eased);
+      } else if (gunState.phase === "recoil" && rt >= 1) {
+        gun.position.copy(gunReady);
+        gun.quaternion.copy(gunIdleQuaternion);
+        slideGroup.position.set(0, 0, 0);
+        camera.position.set(0, 0, 0);
+        camera.lookAt(0, 0, -10);
+        camera.updateMatrixWorld(true);
+        torch.group.position.copy(torchBase);
+        gunState.phase = "idle";
+        updateAim();
+      }
+    }
 
-        if (progress >= 1) {
-          gun.position.copy(gunReady);
-          gun.quaternion.copy(gunIdleQuaternion);
-          gun.visible = true;
-          gunState.phase = "idle";
+    function updateParticles(delta) {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.age += delta;
+        p.velocity.y -= p.gravity * delta;
+        p.mesh.position.addScaledVector(p.velocity, delta);
+
+        if (p.kind === "smoke") {
+          const t = clamp(p.age / p.life);
+          p.mesh.scale.setScalar(1 + t * 2.8);
+          p.mesh.material.opacity = p.baseOpacity * (1 - t);
+        } else {
+          p.mesh.rotation.x += p.spin.x * delta;
+          p.mesh.rotation.y += p.spin.y * delta;
+          p.mesh.rotation.z += p.spin.z * delta;
+        }
+
+        if (p.age >= p.life) {
+          scene.remove(p.mesh);
+          disposeObjectTree(p.mesh);
+          particles.splice(i, 1);
         }
       }
     }
@@ -1324,6 +1602,7 @@ export default function Home() {
     resizeObserver.observe(mount);
     window.addEventListener("resize", resize);
     resize();
+    startEquipAnimation();
 
     let frameId = 0;
     let previousTime = performance.now();
@@ -1332,6 +1611,7 @@ export default function Home() {
       previousTime = now;
 
       updateGun(now);
+      updateParticles(delta);
       updateDebris(delta);
       updateBats(delta);
       renderer.render(scene, camera);
@@ -1349,9 +1629,10 @@ export default function Home() {
       window.removeEventListener("pageshow", handlePageShow);
       renderer.domElement.removeEventListener("pointermove", handlePointerMove);
       renderer.domElement.removeEventListener("pointerdown", handlePointerDown);
-      // Clear bat and debris references on scene teardown.
+      // Clear bat, debris, and particle references on scene teardown.
       bats.length = 0;
       debris.length = 0;
+      particles.length = 0;
       disposeObjectTree(scene);
       wallTexture.dispose();
       cards.forEach((card) => card.texture.dispose());
