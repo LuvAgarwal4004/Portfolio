@@ -2,461 +2,1753 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import HorrorRoomShell from "@/components/horror/HorrorRoomShell";
-import PhysicsTiltCard from "@/components/horror/PhysicsTiltCard";
+import * as THREE from "three";
 
-const PRINCIPLES = [
-  {
-    code: "LOG / A",
-    title: "Craft & Atmosphere",
-    body: "Interfaces shouldn't feel disposable. I build dark, tactile worlds where light, motion, and typography pull you into the story.",
-  },
-  {
-    code: "LOG / B",
-    title: "Full-Stack Engineering",
-    body: "From Next.js App Router and NextAuth authentication flows to MongoDB schemas, REST APIs, and production deployments.",
-  },
-  {
-    code: "LOG / C",
-    title: "Real-Time 3D & Physics",
-    body: "Procedural canvas textures, Three.js dynamic shadows, Verlet particles, spring-damper rigs, and responsive 60fps interaction.",
-  },
-  {
-    code: "LOG / D",
-    title: "Relentless Iteration",
-    body: "Start with curiosity, break things on purpose, measure every edge case, and polish until the interaction feels alive.",
-  },
+const PAPER_W = 4.6;
+const PAPER_H = 5.9;
+const PAPER_SEG_X = 44;
+const PAPER_SEG_Y = 56;
+
+const POLAROID_W = 1.78;
+const POLAROID_H = 2.16;
+const POLAROID_SEG_X = 26;
+const POLAROID_SEG_Y = 32;
+
+const NAV_LINKS = [
+  { href: "/about", code: "001", label: "ABOUT", active: true },
+  { href: "/projects", code: "002", label: "PROJECTS" },
+  { href: "/skills", code: "003", label: "SKILLS" },
+  { href: "/experience", code: "004", label: "EXPERIENCE" },
+  { href: "/contact", code: "005", label: "CONTACT" },
 ];
 
-export default function AboutView() {
-  const plateRef = useRef(null);
-  const uvRef = useRef(null);
-  const pendulumState = useRef({ angle: 0.14, vel: 0 });
-  const [nudgeCount, setNudgeCount] = useState(0);
+function clamp(v, min = 0, max = 1) {
+  return Math.max(min, Math.min(max, v));
+}
 
-  // Real angular pendulum physics for the pinned identity dossier plate.
-  useEffect(() => {
-    const plate = plateRef.current;
-    if (!plate) return;
+function seededRand(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
 
-    let rafId = 0;
-    let prev = performance.now();
+function makeBackdropTextures() {
+  const w = 1024;
+  const h = 1024;
+  const colorCanvas = document.createElement("canvas");
+  colorCanvas.width = w;
+  colorCanvas.height = h;
+  const ctx = colorCanvas.getContext("2d");
 
-    const step = (now) => {
-      const dt = Math.min((now - prev) / 1000, 0.035);
-      prev = now;
+  const bumpCanvas = document.createElement("canvas");
+  bumpCanvas.width = w;
+  bumpCanvas.height = h;
+  const bCtx = bumpCanvas.getContext("2d");
 
-      const s = pendulumState.current;
-      const draft = Math.sin(now / 1100) * 0.12;
-      const torque = -18 * Math.sin(s.angle) - 1.35 * s.vel + draft;
-      s.vel += torque * dt;
-      s.angle += s.vel * dt;
+  const rand = seededRand(9142);
 
-      plate.style.transform = `rotate(${(s.angle * 180) / Math.PI}deg)`;
-      rafId = requestAnimationFrame(step);
-    };
+  // Dark weathered timber / plaster desk backdrop.
+  const base = ctx.createLinearGradient(0, 0, w, h);
+  base.addColorStop(0, "#14100d");
+  base.addColorStop(0.5, "#19130f");
+  base.addColorStop(1, "#0e0b09");
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, w, h);
 
-    rafId = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(rafId);
-  }, []);
+  bCtx.fillStyle = "#808080";
+  bCtx.fillRect(0, 0, w, h);
 
-  // Flashlight UV reveal layer tracking pointer inside the classified block.
-  useEffect(() => {
-    const box = uvRef.current;
-    if (!box) return;
+  // Subtle horizontal plank seams & wood grain streaks.
+  for (let p = 1; p < 5; p++) {
+    const py = (p / 5) * h;
+    ctx.fillStyle = "rgba(0,0,0,0.65)";
+    ctx.fillRect(0, py - 2, w, 4);
+    bCtx.fillStyle = "#202020";
+    bCtx.fillRect(0, py - 2, w, 4);
+  }
 
-    const handleMove = (event) => {
-      const rect = box.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-      box.style.setProperty("--uv-x", `${x}px`);
-      box.style.setProperty("--uv-y", `${y}px`);
-    };
+  for (let i = 0; i < 650; i++) {
+    const y = rand() * h;
+    const len = 80 + rand() * 420;
+    const x = rand() * w;
+    const alpha = 0.03 + rand() * 0.08;
+    ctx.fillStyle = rand() > 0.5 ? `rgba(0,0,0,${alpha})` : `rgba(88,65,45,${alpha * 0.6})`;
+    ctx.fillRect(x, y, len, 1 + rand() * 2.5);
+    bCtx.fillStyle = rand() > 0.5 ? "rgba(50,50,50,0.22)" : "rgba(180,180,180,0.16)";
+    bCtx.fillRect(x, y, len, 1.5);
+  }
 
-    window.addEventListener("pointermove", handleMove, { passive: true });
-    return () => window.removeEventListener("pointermove", handleMove);
-  }, []);
+  // Grit & soot mottling.
+  for (let i = 0; i < 12000; i++) {
+    const x = rand() * w;
+    const y = rand() * h;
+    ctx.fillStyle = rand() > 0.5 ? "rgba(0,0,0,0.14)" : "rgba(70,54,40,0.06)";
+    ctx.fillRect(x, y, 2, 2);
+  }
 
-  const nudgePlate = (direction = 1) => {
-    pendulumState.current.vel += direction * (1.8 + Math.random() * 0.9);
-    setNudgeCount((c) => c + 1);
+  const map = new THREE.CanvasTexture(colorCanvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.anisotropy = 4;
+
+  const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+  bumpMap.anisotropy = 4;
+
+  return { map, bumpMap };
+}
+
+function makeRustyMetalTextures() {
+  const size = 512;
+  const cCanvas = document.createElement("canvas");
+  cCanvas.width = size;
+  cCanvas.height = size;
+  const ctx = cCanvas.getContext("2d");
+
+  const bCanvas = document.createElement("canvas");
+  bCanvas.width = size;
+  bCanvas.height = size;
+  const bCtx = bCanvas.getContext("2d");
+
+  const rCanvas = document.createElement("canvas");
+  rCanvas.width = size;
+  rCanvas.height = size;
+  const rCtx = rCanvas.getContext("2d");
+
+  const rand = seededRand(3319);
+
+  // Dark weathered steel base.
+  ctx.fillStyle = "#3a3634";
+  ctx.fillRect(0, 0, size, size);
+  bCtx.fillStyle = "#888888";
+  bCtx.fillRect(0, 0, size, size);
+  rCtx.fillStyle = "#7a7a7a";
+  rCtx.fillRect(0, 0, size, size);
+
+  // Heavy corroded rust patches & flaking oxidation.
+  for (let i = 0; i < 95; i++) {
+    const cx = rand() * size;
+    const cy = rand() * size;
+    const rad = 14 + rand() * 54;
+    const g = ctx.createRadialGradient(cx, cy, 2, cx, cy, rad);
+    const tone = rand();
+    if (tone < 0.45) {
+      g.addColorStop(0, "rgba(116, 48, 20, 0.88)");
+      g.addColorStop(0.55, "rgba(82, 34, 15, 0.55)");
+      g.addColorStop(1, "rgba(58, 28, 16, 0)");
+    } else if (tone < 0.8) {
+      g.addColorStop(0, "rgba(54, 29, 20, 0.90)");
+      g.addColorStop(0.6, "rgba(38, 22, 16, 0.48)");
+      g.addColorStop(1, "rgba(30, 20, 16, 0)");
+    } else {
+      g.addColorStop(0, "rgba(138, 66, 28, 0.65)");
+      g.addColorStop(1, "rgba(90, 42, 18, 0)");
+    }
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Rust patches are rough & pitted in bump/roughness maps.
+    bCtx.fillStyle = "rgba(36,36,36,0.32)";
+    bCtx.beginPath();
+    bCtx.arc(cx, cy, rad * 0.72, 0, Math.PI * 2);
+    bCtx.fill();
+
+    rCtx.fillStyle = "rgba(235,235,235,0.55)";
+    rCtx.beginPath();
+    rCtx.arc(cx, cy, rad * 0.8, 0, Math.PI * 2);
+    rCtx.fill();
+  }
+
+  // Micro corrosion pitting & worn metal scratches.
+  for (let i = 0; i < 6000; i++) {
+    const x = rand() * size;
+    const y = rand() * size;
+    const dark = rand() > 0.35;
+    ctx.fillStyle = dark ? "rgba(22, 14, 10, 0.45)" : "rgba(148, 84, 42, 0.32)";
+    ctx.fillRect(x, y, 1 + rand() * 2.4, 1 + rand() * 2.4);
+    bCtx.fillStyle = dark ? "rgba(25,25,25,0.45)" : "rgba(220,220,220,0.35)";
+    bCtx.fillRect(x, y, 1.5, 1.5);
+  }
+
+  for (let i = 0; i < 45; i++) {
+    const x1 = rand() * size;
+    const y1 = rand() * size;
+    const x2 = x1 + (rand() - 0.5) * 90;
+    const y2 = y1 + (rand() - 0.5) * 35;
+    ctx.strokeStyle = "rgba(155, 150, 142, 0.32)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+
+    rCtx.strokeStyle = "rgba(75,75,75,0.5)";
+    rCtx.beginPath();
+    rCtx.moveTo(x1, y1);
+    rCtx.lineTo(x2, y2);
+    rCtx.stroke();
+  }
+
+  const map = new THREE.CanvasTexture(cCanvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+
+  const bumpMap = new THREE.CanvasTexture(bCanvas);
+  bumpMap.wrapS = bumpMap.wrapT = THREE.RepeatWrapping;
+
+  const roughnessMap = new THREE.CanvasTexture(rCanvas);
+  roughnessMap.wrapS = roughnessMap.wrapT = THREE.RepeatWrapping;
+
+  return { map, bumpMap, roughnessMap };
+}
+
+function makeRustyPaperMaps() {
+  const w = 1400;
+  const h = 1800;
+
+  const cCanvas = document.createElement("canvas");
+  cCanvas.width = w;
+  cCanvas.height = h;
+  const ctx = cCanvas.getContext("2d");
+
+  const bCanvas = document.createElement("canvas");
+  bCanvas.width = w;
+  bCanvas.height = h;
+  const bCtx = bCanvas.getContext("2d");
+
+  const rCanvas = document.createElement("canvas");
+  rCanvas.width = w;
+  rCanvas.height = h;
+  const rCtx = rCanvas.getContext("2d");
+
+  const aCanvas = document.createElement("canvas");
+  aCanvas.width = w;
+  aCanvas.height = h;
+  const aCtx = aCanvas.getContext("2d");
+
+  const rand = seededRand(4004);
+
+  // 1. Base aged rusty parchment wash.
+  const baseGrad = ctx.createRadialGradient(w * 0.48, h * 0.46, 120, w * 0.5, h * 0.5, h * 0.72);
+  baseGrad.addColorStop(0, "#b89b70");
+  baseGrad.addColorStop(0.55, "#9c7c52");
+  baseGrad.addColorStop(0.88, "#775633");
+  baseGrad.addColorStop(1, "#52371d");
+  ctx.fillStyle = baseGrad;
+  ctx.fillRect(0, 0, w, h);
+
+  bCtx.fillStyle = "#808080";
+  bCtx.fillRect(0, 0, w, h);
+
+  rCtx.fillStyle = "#e0e0e0";
+  rCtx.fillRect(0, 0, w, h);
+
+  // Irregular ragged torn edge alpha mask.
+  aCtx.fillStyle = "#000000";
+  aCtx.fillRect(0, 0, w, h);
+  aCtx.fillStyle = "#ffffff";
+  aCtx.beginPath();
+  const margin = 16;
+  const step = 14;
+  for (let x = margin; x <= w - margin; x += step) {
+    const jitter = (rand() - 0.5) * 14 - (x > w * 0.78 ? (x - w * 0.78) * 0.08 : 0);
+    if (x === margin) aCtx.moveTo(x, margin + jitter);
+    else aCtx.lineTo(x, margin + Math.max(2, jitter));
+  }
+  for (let y = margin; y <= h - margin; y += step) {
+    const notch = y > h * 0.42 && y < h * 0.52 ? -22 * Math.sin(((y - h * 0.42) / (h * 0.1)) * Math.PI) : 0;
+    aCtx.lineTo(w - margin + (rand() - 0.5) * 14 + notch, y);
+  }
+  for (let x = w - margin; x >= margin; x -= step) {
+    const notch = x < w * 0.24 ? -18 * (1 - x / (w * 0.24)) : 0;
+    aCtx.lineTo(x, h - margin + (rand() - 0.5) * 16 + notch);
+  }
+  for (let y = h - margin; y >= margin; y -= step) {
+    aCtx.lineTo(margin + (rand() - 0.5) * 13, y);
+  }
+  aCtx.closePath();
+  aCtx.fill();
+
+  // 2. Rusty water-blotch clouds & foxing stains.
+  for (let i = 0; i < 42; i++) {
+    const cx = rand() * w;
+    const cy = rand() * h;
+    const rad = 70 + rand() * 240;
+    const g = ctx.createRadialGradient(cx, cy, 8, cx, cy, rad);
+    if (rand() > 0.4) {
+      g.addColorStop(0, `rgba(98, 58, 26, ${0.08 + rand() * 0.14})`);
+      g.addColorStop(0.65, `rgba(116, 70, 32, ${0.06 + rand() * 0.08})`);
+      g.addColorStop(1, "rgba(116, 70, 32, 0)");
+    } else {
+      g.addColorStop(0, `rgba(210, 182, 134, ${0.06 + rand() * 0.10})`);
+      g.addColorStop(1, "rgba(210, 182, 134, 0)");
+    }
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Aged cup / rust ring stain on lower-right edge.
+  ctx.save();
+  ctx.translate(w * 0.81, h * 0.87);
+  for (let ring = 0; ring < 3; ring++) {
+    ctx.strokeStyle = `rgba(74, 41, 16, ${0.22 - ring * 0.05})`;
+    ctx.lineWidth = 4 + ring * 2.5;
+    ctx.beginPath();
+    ctx.ellipse(ring * 2, -ring * 1.5, 92 + ring * 3, 86 + ring * 3, 0.3, 0.2, Math.PI * 1.85);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Foxing rust spots across the paper.
+  for (let i = 0; i < 240; i++) {
+    const x = rand() * w;
+    const y = rand() * h;
+    const r = 1.5 + rand() * 7;
+    ctx.fillStyle = `rgba(92, 46, 18, ${0.09 + rand() * 0.18})`;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 3. Paper fiber grain & organic speckles in albedo + bump.
+  for (let i = 0; i < 26000; i++) {
+    const x = rand() * w;
+    const y = rand() * h;
+    const a = rand() * 0.09;
+    ctx.fillStyle = rand() > 0.5 ? `rgba(38, 24, 12, ${a})` : `rgba(235, 212, 174, ${a * 0.85})`;
+    ctx.fillRect(x, y, 1 + rand() * 2.8, 1 + rand() * 2.2);
+
+    bCtx.fillStyle = rand() > 0.5 ? "rgba(40,40,40,0.14)" : "rgba(215,215,215,0.14)";
+    bCtx.fillRect(x, y, 2, 2);
+  }
+
+  // Short paper pulp fibers.
+  ctx.lineWidth = 0.9;
+  for (let i = 0; i < 900; i++) {
+    const x = rand() * w;
+    const y = rand() * h;
+    const angle = rand() * Math.PI * 2;
+    const len = 5 + rand() * 14;
+    ctx.strokeStyle = rand() > 0.5 ? "rgba(56, 38, 22, 0.08)" : "rgba(222, 198, 155, 0.08)";
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + Math.cos(angle) * len, y + Math.sin(angle) * len);
+    ctx.stroke();
+  }
+
+  // 4. Fold creases (horizontal center & vertical offset) in both albedo and bump.
+  const drawCrease = (x1, y1, x2, y2) => {
+    ctx.save();
+    ctx.strokeStyle = "rgba(44, 28, 15, 0.22)";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+
+    ctx.strokeStyle = "rgba(232, 208, 168, 0.16)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x1 + 2, y1 + 3);
+    ctx.lineTo(x2 + 2, y2 + 3);
+    ctx.stroke();
+
+    bCtx.strokeStyle = "rgba(35,35,35,0.45)";
+    bCtx.lineWidth = 6;
+    bCtx.beginPath();
+    bCtx.moveTo(x1, y1);
+    bCtx.lineTo(x2, y2);
+    bCtx.stroke();
+
+    bCtx.strokeStyle = "rgba(220,220,220,0.42)";
+    bCtx.lineWidth = 3;
+    bCtx.beginPath();
+    bCtx.moveTo(x1 + 2, y1 + 4);
+    bCtx.lineTo(x2 + 2, y2 + 4);
+    bCtx.stroke();
+    ctx.restore();
+  };
+  drawCrease(14, h * 0.485, w - 14, h * 0.495);
+  drawCrease(w * 0.49, 14, w * 0.482, h - 14);
+
+  // 5. Burned stains & charred ember holes.
+  const burnSpots = [
+    { x: w * 0.96, y: h * 0.12, rx: 145, ry: 165, hole: false },
+    { x: w * 0.08, y: h * 0.94, rx: 190, ry: 140, hole: false },
+    { x: w * 0.94, y: h * 0.47, rx: 88, ry: 110, hole: true },
+    { x: w * 0.16, y: h * 0.82, rx: 42, ry: 38, hole: true },
+  ];
+
+  for (const b of burnSpots) {
+    ctx.save();
+    ctx.translate(b.x, b.y);
+    const halo = ctx.createRadialGradient(0, 0, b.rx * 0.18, 0, 0, b.rx);
+    halo.addColorStop(0, "rgba(12, 8, 6, 0.94)");
+    halo.addColorStop(0.38, "rgba(34, 18, 8, 0.85)");
+    halo.addColorStop(0.68, "rgba(104, 48, 12, 0.52)");
+    halo.addColorStop(0.88, "rgba(132, 74, 22, 0.18)");
+    halo.addColorStop(1, "rgba(132, 74, 22, 0)");
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, b.rx, b.ry, rand() * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Rough blistered soot in roughness & bump.
+    rCtx.fillStyle = "rgba(250,250,250,0.65)";
+    rCtx.beginPath();
+    rCtx.ellipse(0, 0, b.rx * 0.6, b.ry * 0.6, 0, 0, Math.PI * 2);
+    rCtx.fill();
+
+    bCtx.strokeStyle = "rgba(230,230,230,0.5)";
+    bCtx.lineWidth = 6;
+    bCtx.beginPath();
+    bCtx.ellipse(0, 0, b.rx * 0.34, b.ry * 0.34, 0, 0, Math.PI * 2);
+    bCtx.stroke();
+
+    if (b.hole) {
+      // Actual burned-through pinhole in alphaMap.
+      const holeR = b.rx * 0.24;
+      aCtx.save();
+      aCtx.translate(b.x, b.y);
+      aCtx.fillStyle = "#000000";
+      aCtx.beginPath();
+      for (let a = 0; a <= Math.PI * 2; a += 0.35) {
+        const rr = holeR * (0.78 + rand() * 0.42);
+        const hx = Math.cos(a) * rr;
+        const hy = Math.sin(a) * rr * (b.ry / b.rx);
+        if (a === 0) aCtx.moveTo(hx, hy);
+        else aCtx.lineTo(hx, hy);
+      }
+      aCtx.closePath();
+      aCtx.fill();
+      aCtx.restore();
+    }
+    ctx.restore();
+  }
+
+  // Darkened charred edges around the whole sheet.
+  const edgeShade = ctx.createRadialGradient(w * 0.5, h * 0.5, w * 0.38, w * 0.5, h * 0.5, h * 0.68);
+  edgeShade.addColorStop(0, "rgba(0,0,0,0)");
+  edgeShade.addColorStop(0.78, "rgba(38,22,10,0.22)");
+  edgeShade.addColorStop(1, "rgba(18,10,5,0.68)");
+  ctx.fillStyle = edgeShade;
+  ctx.fillRect(0, 0, w, h);
+
+  // 6. Tiny dried oxidized blood spatters (realistic small drops & spray flecks).
+  const drawBloodCluster = (cx, cy, count, spread, maxR) => {
+    for (let i = 0; i < count; i++) {
+      const ang = rand() * Math.PI * 2;
+      const dist = Math.pow(rand(), 1.4) * spread;
+      const x = cx + Math.cos(ang) * dist;
+      const y = cy + Math.sin(ang) * dist;
+      const r = 1.2 + rand() * maxR;
+      const stretch = 1 + rand() * 0.9;
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(ang);
+      const drop = ctx.createRadialGradient(0, 0, r * 0.15, 0, 0, r * stretch);
+      drop.addColorStop(0, "rgba(42, 4, 7, 0.92)");
+      drop.addColorStop(0.65, "rgba(74, 10, 13, 0.82)");
+      drop.addColorStop(0.9, "rgba(52, 7, 9, 0.55)");
+      drop.addColorStop(1, "rgba(52, 7, 9, 0)");
+      ctx.fillStyle = drop;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * stretch, r, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Dried blood droplets are slightly glossy & raised in bump/roughness.
+      rCtx.fillStyle = "rgba(85,85,85,0.55)";
+      rCtx.beginPath();
+      rCtx.arc(x, y, r, 0, Math.PI * 2);
+      rCtx.fill();
+
+      bCtx.fillStyle = "rgba(210,210,210,0.28)";
+      bCtx.beginPath();
+      bCtx.arc(x, y, r, 0, Math.PI * 2);
+      bCtx.fill();
+    }
   };
 
+  // Subtle spatter clusters tucked along the margins and corners so all ink remains legible.
+  drawBloodCluster(w * 0.90, h * 0.25, 22, 75, 5.2);
+  drawBloodCluster(w * 0.055, h * 0.66, 18, 52, 4.2);
+  drawBloodCluster(w * 0.93, h * 0.78, 16, 55, 4.0);
+  drawBloodCluster(w * 0.54, h * 0.07, 11, 42, 3.2);
+  drawBloodCluster(w * 0.24, h * 0.91, 14, 55, 3.8);
+
+  // 7. Typed & stamped dossier typography inked naturally onto the aged paper.
+  // Top-left area (x: 75..645, y: 95..775) stays open for the pinned Polaroid.
+  ctx.save();
+  ctx.fillStyle = "rgba(28, 19, 13, 0.86)";
+  ctx.font = "bold 20px 'Courier New', monospace";
+  ctx.fillText("CASE DOSSIER // 001-ID", 695, 162);
+
+  ctx.fillStyle = "rgba(86, 16, 18, 0.76)";
+  ctx.font = "bold 18px 'Courier New', monospace";
+  ctx.textAlign = "right";
+  ctx.fillText("CONFIDENTIAL", 1290, 162);
+  ctx.textAlign = "left";
+
+  ctx.strokeStyle = "rgba(38, 26, 17, 0.55)";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(695, 186);
+  ctx.lineTo(1290, 186);
+  ctx.stroke();
+
+  // Name & role block beside Polaroid.
+  ctx.fillStyle = "rgba(22, 15, 10, 0.92)";
+  ctx.font = "bold 62px Georgia, serif";
+  ctx.fillText("Luv Agarwal", 695, 272);
+
+  ctx.fillStyle = "rgba(56, 36, 22, 0.88)";
+  ctx.font = "italic 28px Georgia, serif";
+  ctx.fillText("Builder · Developer · Curious Mind", 695, 322);
+
+  const fields = [
+    ["ORIGIN", "Kolkata & Howrah, West Bengal"],
+    ["STATUS", "B.Tech · 2nd Year (WBJEE)"],
+    ["FOCUS", "Web · Apps · Cyber · Robotics"],
+    ["DISPATCH", "luvag0707@gmail.com"],
+  ];
+
+  fields.forEach(([label, value], i) => {
+    const fy = 408 + i * 74;
+    ctx.fillStyle = "rgba(64, 42, 24, 0.75)";
+    ctx.font = "bold 18px 'Courier New', monospace";
+    ctx.fillText(label, 695, fy);
+
+    ctx.fillStyle = "rgba(24, 17, 11, 0.90)";
+    ctx.font = "25px 'Courier New', monospace";
+    ctx.fillText(value, 695, fy + 31);
+
+    ctx.strokeStyle = "rgba(48, 32, 18, 0.24)";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(695, fy + 43);
+    ctx.lineTo(1288, fy + 43);
+    ctx.stroke();
+  });
+
+  // Worn oxidized crimson rubber stamp beside fields.
+  ctx.save();
+  ctx.translate(1165, 718);
+  ctx.rotate(-0.16);
+  ctx.strokeStyle = "rgba(104, 16, 18, 0.64)";
+  ctx.lineWidth = 4;
+  ctx.strokeRect(-115, -30, 230, 60);
+  ctx.fillStyle = "rgba(104, 16, 18, 0.68)";
+  ctx.font = "bold 24px 'Courier New', monospace";
+  ctx.textAlign = "center";
+  ctx.fillText("ARCHIVED // 26", 0, 9);
+  ctx.restore();
+
+  // Lower main biography section below the Polaroid.
+  ctx.strokeStyle = "rgba(38, 26, 17, 0.50)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(118, 840);
+  ctx.lineTo(1288, 840);
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(52, 33, 19, 0.82)";
+  ctx.font = "bold 20px 'Courier New', monospace";
+  ctx.fillText("SUBJECT RECORD — BEHIND THE SCREEN", 118, 884);
+
+  const paragraphs = [
+    "I'm Luv Agarwal, born and bred in Kolkata, West Bengal. From a young age, I was fascinated by technology, networking, and how things work beneath the surface. As I grew, technology evolved alongside me at an exponential pace—and instead of watching it vanish ahead like a distant classmate, catching up to it became everything I could think about.",
+    "Until Class 12 at a private school in Howrah, all I knew was basic computing and school-level Java. Appearing for WBJEE and JEE Mains—and securing a seat at a top private college through my WBJEE rank—opened the door to real freedom: the space to explore and discover what truly sparks my adrenaline.",
+    "I started with web development from scratch and got hooked immediately—building around half a dozen websites and working with real-world clients for hands-on field experience. Application development came quickly next, built naturally on React and the languages I already spoke.",
+    "Now in my 2nd year of college, I've dipped my toes into cybersecurity—exploring OSINT, Google Dorks, and networking, and finding myself pulled deeper in. At the same time, an undeniable curiosity for electrical and hardware engineering lingers: I've loved robots and drones since childhood, even if I haven't stepped into building them yet.",
+    "The further I venture into the depths of engineering, the clearer one truth becomes—knowledge here is like trying to drink an ocean: an endless dark void of possibilities and things still waiting to be discovered.",
+  ];
+
+  const drawWrapped = (text, startX, startY, maxWidth, lineHeight) => {
+    const words = text.split(" ");
+    let line = "";
+    let y = startY;
+    for (let n = 0; n < words.length; n++) {
+      const testLine = line ? `${line} ${words[n]}` : words[n];
+      if (ctx.measureText(testLine).width > maxWidth && line) {
+        ctx.fillText(line, startX, y);
+        line = words[n];
+        y += lineHeight;
+      } else {
+        line = testLine;
+      }
+    }
+    if (line) {
+      ctx.fillText(line, startX, y);
+      y += lineHeight;
+    }
+    return y;
+  };
+
+  ctx.fillStyle = "rgba(24, 17, 11, 0.91)";
+  ctx.font = "22px Georgia, serif";
+  let cursorY = 930;
+  for (const para of paragraphs) {
+    cursorY = drawWrapped(para, 118, cursorY, 1164, 33);
+    cursorY += 14;
+  }
+
+  // Bottom index line & ink signature positioned safely below wrapped prose.
+  const footerLineY = Math.max(1535, cursorY + 12);
+  ctx.strokeStyle = "rgba(38, 26, 17, 0.35)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(118, footerLineY);
+  ctx.lineTo(1288, footerLineY);
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(44, 29, 17, 0.85)";
+  ctx.font = "bold 18px 'Courier New', monospace";
+  ctx.fillText(
+    "TRAIL: WEB DEV · APPS · REACT · CYBERSECURITY (OSINT / DORKS) · ROBOTICS & HARDWARE",
+    118,
+    footerLineY + 42
+  );
+
+  ctx.fillStyle = "rgba(32, 20, 12, 0.80)";
+  ctx.font = "italic 32px Georgia, serif";
+  ctx.textAlign = "right";
+  ctx.fillText("— Luv Agarwal", 1272, Math.min(1685, footerLineY + 105));
+  ctx.restore();
+
+  const map = new THREE.CanvasTexture(cCanvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.anisotropy = 8;
+
+  const bumpMap = new THREE.CanvasTexture(bCanvas);
+  bumpMap.anisotropy = 4;
+
+  const roughnessMap = new THREE.CanvasTexture(rCanvas);
+  roughnessMap.anisotropy = 4;
+
+  const alphaMap = new THREE.CanvasTexture(aCanvas);
+  alphaMap.anisotropy = 4;
+
+  return { map, bumpMap, roughnessMap, alphaMap };
+}
+
+function makePolaroidMaps(onReady) {
+  const w = 900;
+  const h = 1090;
+
+  const cCanvas = document.createElement("canvas");
+  cCanvas.width = w;
+  cCanvas.height = h;
+  const ctx = cCanvas.getContext("2d");
+
+  const rCanvas = document.createElement("canvas");
+  rCanvas.width = w;
+  rCanvas.height = h;
+  const rCtx = rCanvas.getContext("2d");
+
+  const bCanvas = document.createElement("canvas");
+  bCanvas.width = w;
+  bCanvas.height = h;
+  const bCtx = bCanvas.getContext("2d");
+
+  const rand = seededRand(7721);
+
+  const renderFrame = (photoImg) => {
+    // 1. Old yellowed/pale/rusty Polaroid border stock.
+    const borderGrad = ctx.createLinearGradient(0, 0, w, h);
+    borderGrad.addColorStop(0, "#cbc0a8");
+    borderGrad.addColorStop(0.55, "#bfb093");
+    borderGrad.addColorStop(1, "#a79473");
+    ctx.fillStyle = borderGrad;
+    ctx.fillRect(0, 0, w, h);
+
+    // Matte cardstock in roughness map, glossy inside photo window.
+    rCtx.fillStyle = "#d8d8d8";
+    rCtx.fillRect(0, 0, w, h);
+    bCtx.fillStyle = "#808080";
+    bCtx.fillRect(0, 0, w, h);
+
+    // Subtle rusty blotches & grime on white border.
+    for (let i = 0; i < 35; i++) {
+      const cx = rand() * w;
+      const cy = rand() * h;
+      const rad = 30 + rand() * 110;
+      const g = ctx.createRadialGradient(cx, cy, 4, cx, cy, rad);
+      g.addColorStop(0, `rgba(112, 74, 38, ${0.06 + rand() * 0.10})`);
+      g.addColorStop(1, "rgba(112, 74, 38, 0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Fine border paper texture.
+    for (let i = 0; i < 6000; i++) {
+      const x = rand() * w;
+      const y = rand() * h;
+      ctx.fillStyle = rand() > 0.5 ? "rgba(42,30,18,0.06)" : "rgba(255,244,220,0.05)";
+      ctx.fillRect(x, y, 2, 2);
+    }
+
+    // 2. Photo aperture coordinates.
+    const px = 66;
+    const py = 68;
+    const pw = 768;
+    const ph = 768;
+
+    // Glossy emulsion roughness inside photo square.
+    rCtx.fillStyle = "#484848";
+    rCtx.fillRect(px, py, pw, ph);
+
+    // Recessed inner shadow around photo frame.
+    ctx.fillStyle = "#181410";
+    ctx.fillRect(px - 3, py - 3, pw + 6, ph + 6);
+
+    bCtx.strokeStyle = "#353535";
+    bCtx.lineWidth = 6;
+    bCtx.strokeRect(px, py, pw, ph);
+
+    if (photoImg) {
+      // Draw photo cover-cropped on upper-center (preserves hair/glasses/smile).
+      const srcRatio = photoImg.width / photoImg.height;
+      let sx = 0;
+      let sy = 0;
+      let sw = photoImg.width;
+      let sh = photoImg.height;
+      if (srcRatio > 1) {
+        sw = photoImg.height;
+        sx = (photoImg.width - sw) * 0.5;
+      } else {
+        sh = photoImg.width;
+        sy = (photoImg.height - sh) * 0.25;
+      }
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(px, py, pw, ph);
+      ctx.clip();
+
+      // Pale faded vintage chemical look via canvas filter.
+      ctx.filter = "saturate(0.46) contrast(0.88) brightness(0.95) sepia(0.32)";
+      ctx.drawImage(photoImg, sx, sy, sw, sh, px, py, pw, ph);
+      ctx.filter = "none";
+
+      // Pale milky shadow lift + aged warm tint.
+      ctx.fillStyle = "rgba(216, 200, 170, 0.16)";
+      ctx.fillRect(px, py, pw, ph);
+
+      ctx.fillStyle = "rgba(110, 74, 38, 0.14)";
+      ctx.fillRect(px, py, pw, ph);
+
+      // Analog lens vignette around square frame.
+      const vig = ctx.createRadialGradient(
+        px + pw * 0.5,
+        py + ph * 0.46,
+        pw * 0.22,
+        px + pw * 0.5,
+        py + ph * 0.5,
+        pw * 0.72
+      );
+      vig.addColorStop(0, "rgba(0,0,0,0)");
+      vig.addColorStop(0.7, "rgba(22,16,10,0.22)");
+      vig.addColorStop(1, "rgba(14,10,6,0.62)");
+      ctx.fillStyle = vig;
+      ctx.fillRect(px, py, pw, ph);
+
+      // Subtle analog emulsion scratches & grain inside photo.
+      for (let i = 0; i < 4500; i++) {
+        ctx.fillStyle = rand() > 0.5 ? "rgba(255,240,210,0.038)" : "rgba(15,10,6,0.045)";
+        ctx.fillRect(px + rand() * pw, py + rand() * ph, 2, 2);
+      }
+      for (let i = 0; i < 14; i++) {
+        const sx1 = px + rand() * pw;
+        const sy1 = py + rand() * ph;
+        ctx.strokeStyle = "rgba(225, 208, 178, 0.14)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(sx1, sy1);
+        ctx.lineTo(sx1 + (rand() - 0.5) * 40, sy1 + 15 + rand() * 55);
+        ctx.stroke();
+      }
+      ctx.restore();
+    } else {
+      ctx.fillStyle = "#5c5040";
+      ctx.fillRect(px, py, pw, ph);
+    }
+
+    // Rusty corner stain & tiny dried blood speck on Polaroid bottom-right border.
+    const rustLift = ctx.createRadialGradient(w * 0.92, h * 0.94, 8, w * 0.9, h * 0.92, 130);
+    rustLift.addColorStop(0, "rgba(86, 48, 20, 0.42)");
+    rustLift.addColorStop(0.6, "rgba(104, 62, 28, 0.18)");
+    rustLift.addColorStop(1, "rgba(104, 62, 28, 0)");
+    ctx.fillStyle = rustLift;
+    ctx.fillRect(w * 0.6, h * 0.72, w * 0.4, h * 0.28);
+
+    // Tiny dried blood flecks near bottom-left chin.
+    for (let i = 0; i < 7; i++) {
+      const bx = 135 + rand() * 68;
+      const by = 920 + rand() * 65;
+      const br = 1.4 + rand() * 3.2;
+      ctx.fillStyle = "rgba(62, 8, 10, 0.78)";
+      ctx.beginPath();
+      ctx.arc(bx, by, br, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Subtle darkened perimeter bevel on the Polaroid border.
+    ctx.strokeStyle = "rgba(48, 34, 20, 0.35)";
+    ctx.lineWidth = 6;
+    ctx.strokeRect(3, 3, w - 6, h - 6);
+
+    // Handwritten faded marker caption on bottom chin.
+    ctx.fillStyle = "rgba(38, 28, 20, 0.78)";
+    ctx.font = "italic 46px Georgia, serif";
+    ctx.fillText("Luv  ·  '26", 82, 972);
+
+    ctx.fillStyle = "rgba(64, 46, 30, 0.55)";
+    ctx.font = "18px 'Courier New', monospace";
+    ctx.textAlign = "right";
+    ctx.fillText("REF // 001", w - 72, 972);
+    ctx.textAlign = "left";
+  };
+
+  renderFrame(null);
+
+  const map = new THREE.CanvasTexture(cCanvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.anisotropy = 8;
+
+  const roughnessMap = new THREE.CanvasTexture(rCanvas);
+  roughnessMap.anisotropy = 4;
+
+  const bumpMap = new THREE.CanvasTexture(bCanvas);
+  bumpMap.anisotropy = 4;
+
+  let cancelled = false;
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.onload = () => {
+    if (cancelled) return;
+    renderFrame(img);
+    map.needsUpdate = true;
+    roughnessMap.needsUpdate = true;
+    bumpMap.needsUpdate = true;
+    onReady?.();
+  };
+  img.src = "/profile_pic.jpg";
+
+  return {
+    map,
+    roughnessMap,
+    bumpMap,
+    cancel: () => {
+      cancelled = true;
+    },
+  };
+}
+
+function makeRustyClipPin(rustTextures) {
+  const group = new THREE.Group();
+
+  const rustMat = new THREE.MeshStandardMaterial({
+    map: rustTextures.map,
+    bumpMap: rustTextures.bumpMap,
+    bumpScale: 0.018,
+    roughnessMap: rustTextures.roughnessMap,
+    roughness: 0.85,
+    metalness: 0.74,
+  });
+
+  const darkPinMat = new THREE.MeshStandardMaterial({
+    map: rustTextures.map,
+    bumpMap: rustTextures.bumpMap,
+    bumpScale: 0.022,
+    roughnessMap: rustTextures.roughnessMap,
+    color: 0x8f7c6b,
+    roughness: 0.78,
+    metalness: 0.78,
+  });
+
+  // 3D curved steel paperclip sliding diagonally over the top-left corner of the Polaroid.
+  // Back leg starts behind the paper/Polaroid edge, wraps over top edge, clamps down onto the front.
+  const clipCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-0.075, -0.14, -0.024),
+    new THREE.Vector3(-0.075, 0.14, -0.022),
+    new THREE.Vector3(-0.04, 0.255, 0.016),
+    new THREE.Vector3(0.055, 0.255, 0.036),
+    new THREE.Vector3(0.088, 0.14, 0.026),
+    new THREE.Vector3(0.088, -0.19, 0.024),
+    new THREE.Vector3(0.048, -0.275, 0.028),
+    new THREE.Vector3(-0.036, -0.275, 0.028),
+    new THREE.Vector3(-0.055, -0.18, 0.026),
+    new THREE.Vector3(-0.055, 0.09, 0.026),
+    new THREE.Vector3(-0.015, 0.155, 0.032),
+    new THREE.Vector3(0.036, 0.14, 0.030),
+    new THREE.Vector3(0.042, -0.09, 0.026),
+  ]);
+
+  const clipGeo = new THREE.TubeGeometry(clipCurve, 96, 0.020, 12, false);
+  const clipMesh = new THREE.Mesh(clipGeo, rustMat);
+  clipMesh.castShadow = true;
+  clipMesh.receiveShadow = true;
+  group.add(clipMesh);
+
+  // Small corroded iron/brass pin-clasp stud anchoring the top loop into the paper.
+  const collar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.032, 0.042, 0.035, 16),
+    darkPinMat
+  );
+  collar.rotation.x = Math.PI / 2;
+  collar.position.set(0.01, 0.19, 0.036);
+  collar.castShadow = true;
+  group.add(collar);
+
+  const tackHead = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.076, 0.068, 0.022, 24),
+    darkPinMat
+  );
+  tackHead.rotation.x = Math.PI / 2;
+  tackHead.position.set(0.01, 0.19, 0.056);
+  tackHead.castShadow = true;
+  tackHead.receiveShadow = true;
+  group.add(tackHead);
+
+  const tackDome = new THREE.Mesh(
+    new THREE.SphereGeometry(0.068, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.45),
+    rustMat
+  );
+  tackDome.rotation.x = Math.PI / 2;
+  tackDome.scale.set(1, 0.42, 1);
+  tackDome.position.set(0.01, 0.19, 0.064);
+  tackDome.castShadow = true;
+  tackDome.receiveShadow = true;
+  group.add(tackDome);
+
+  return group;
+}
+
+function makeDustSpriteTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 64;
+  canvas.height = 64;
+  const ctx = canvas.getContext("2d");
+  const grad = ctx.createRadialGradient(32, 32, 2, 32, 32, 30);
+  grad.addColorStop(0, "rgba(255,228,184,1)");
+  grad.addColorStop(0.4, "rgba(255,204,142,0.42)");
+  grad.addColorStop(1, "rgba(255,190,120,0)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 64, 64);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+export default function AboutView() {
+  const mountRef = useRef(null);
+  const cursorRef = useRef(null);
+  const veilRef = useRef(null);
+  const [cursorHovered, setCursorHovered] = useState(false);
+
+  useEffect(() => {
+    const mount = mountRef.current;
+    const veil = veilRef.current;
+    if (!mount) return;
+
+    if (veil) {
+      veil.style.opacity = "1";
+      requestAnimationFrame(() => {
+        if (veil) veil.style.opacity = "0";
+      });
+    }
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x040303);
+
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.2, 40);
+    camera.position.set(0, 0, 9.2);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: false,
+      powerPreference: "high-performance",
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+    renderer.setSize(mount.clientWidth, mount.clientHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.18;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.domElement.className = "about-three-canvas";
+    mount.appendChild(renderer.domElement);
+
+    // Subtle moody ambient illumination so the paper stays legible while keeping deep horror shadows.
+    const ambient = new THREE.AmbientLight(0xa39278, 0.22);
+    scene.add(ambient);
+
+    const hemi = new THREE.HemisphereLight(0xc2ac86, 0x160d0e, 0.24);
+    scene.add(hemi);
+
+    // Angled upper-left overhead lamp casting realistic diagonal shadows from the lifted Polaroid corner & clip-pin.
+    const rakingLamp = new THREE.SpotLight(0xffd7a3, 38, 22, 0.74, 0.86, 1.35);
+    rakingLamp.position.set(-3.4, 3.8, 5.0);
+    rakingLamp.target.position.set(-0.2, 0.3, 0);
+    rakingLamp.castShadow = true;
+    rakingLamp.shadow.mapSize.set(2048, 2048);
+    rakingLamp.shadow.camera.near = 1.5;
+    rakingLamp.shadow.camera.far = 14;
+    rakingLamp.shadow.bias = -0.00018;
+    rakingLamp.shadow.normalBias = 0.008;
+    rakingLamp.shadow.radius = 3.5;
+    scene.add(rakingLamp);
+    scene.add(rakingLamp.target);
+
+    // Subtle atmospheric crimson practical glow in upper-left margin.
+    const redGlow = new THREE.PointLight(0x721218, 3.0, 11, 1.8);
+    redGlow.position.set(-4.6, 3.2, 1.8);
+    scene.add(redGlow);
+
+    // Interactive handheld flashlight tracking the cursor with smooth inertia.
+    const flashlight = new THREE.SpotLight(0xffe1b0, 68, 20, 0.38, 0.88, 1.4);
+    flashlight.position.set(-0.6, -1.0, 5.2);
+    flashlight.castShadow = true;
+    flashlight.shadow.mapSize.set(2048, 2048);
+    flashlight.shadow.camera.near = 1.5;
+    flashlight.shadow.camera.far = 14;
+    flashlight.shadow.bias = -0.00018;
+    flashlight.shadow.normalBias = 0.008;
+    flashlight.shadow.radius = 4;
+    scene.add(flashlight);
+    scene.add(flashlight.target);
+
+    // Dark scarred wooden surface behind the rusty paper.
+    const backdropTextures = makeBackdropTextures();
+    const backdrop = new THREE.Mesh(
+      new THREE.PlaneGeometry(24, 18),
+      new THREE.MeshStandardMaterial({
+        map: backdropTextures.map,
+        bumpMap: backdropTextures.bumpMap,
+        bumpScale: 0.03,
+        roughness: 0.92,
+        metalness: 0.05,
+      })
+    );
+    backdrop.position.set(0, 0, -0.30);
+    backdrop.receiveShadow = true;
+    scene.add(backdrop);
+
+    // Root document assembly (subtle parallax & entry settle physics).
+    const docGroup = new THREE.Group();
+    docGroup.position.set(0, -0.08, 0);
+    scene.add(docGroup);
+
+    // ---------------------------------------------------------
+    // 1. OLD RUSTY PAPER WITH REAL CLOTH/PAPER VERTEX PHYSICS
+    // ---------------------------------------------------------
+    const paperMaps = makeRustyPaperMaps();
+    const paperGeo = new THREE.PlaneGeometry(PAPER_W, PAPER_H, PAPER_SEG_X, PAPER_SEG_Y);
+    const paperMat = new THREE.MeshStandardMaterial({
+      map: paperMaps.map,
+      bumpMap: paperMaps.bumpMap,
+      bumpScale: 0.026,
+      roughnessMap: paperMaps.roughnessMap,
+      roughness: 0.88,
+      metalness: 0.02,
+      alphaMap: paperMaps.alphaMap,
+      alphaTest: 0.45,
+      side: THREE.DoubleSide,
+    });
+    const paperMesh = new THREE.Mesh(paperGeo, paperMat);
+    paperMesh.castShadow = true;
+    paperMesh.receiveShadow = true;
+    docGroup.add(paperMesh);
+
+    const paperPosAttr = paperGeo.attributes.position;
+    const paperVertCount = paperPosAttr.count;
+    const paperRestZ = new Float32Array(paperVertCount);
+    const paperDisp = new Float32Array(paperVertCount);
+    const paperVel = new Float32Array(paperVertCount);
+    const paperNext = new Float32Array(paperVertCount);
+    const paperPinned = new Float32Array(paperVertCount);
+
+    for (let i = 0; i < paperVertCount; i++) {
+      const vx = paperPosAttr.getX(i);
+      const vy = paperPosAttr.getY(i);
+      const nx = vx / (PAPER_W * 0.5); // -1..1
+      const ny = vy / (PAPER_H * 0.5); // -1..1
+
+      // Organic aged warp + subtle crease valley + slightly curled free bottom corners.
+      const creaseH = -Math.exp(-Math.pow((ny - 0.02) * 14, 2)) * 0.025;
+      const creaseV = Math.exp(-Math.pow((nx + 0.02) * 14, 2)) * 0.018;
+      const wave = Math.sin(nx * 2.1 + 0.4) * Math.cos(ny * 1.7) * 0.028;
+      const bottomLift =
+        Math.pow(Math.max(0, -ny), 2.1) *
+        (0.06 + 0.14 * Math.pow(Math.abs(nx), 1.8));
+      const topRightCurl =
+        Math.pow(Math.max(0, ny), 2.2) * Math.pow(Math.max(0, nx), 2.0) * 0.08;
+
+      const rz = creaseH + creaseV + wave + bottomLift + topRightCurl;
+      paperRestZ[i] = rz;
+      paperPosAttr.setZ(i, rz);
+
+      // Pin weight: top-left (under clip-pin) & center spine are tightly anchored; outer corners flex freely.
+      const distTopLeft = Math.hypot(nx + 0.52, ny - 0.65);
+      paperPinned[i] = clamp(1 - distTopLeft * 0.68, 0.08, 1);
+    }
+    paperGeo.computeVertexNormals();
+
+    // ---------------------------------------------------------
+    // 2. POLAROID PHOTO ON TOP-LEFT (LIFTED BOTTOM-RIGHT CORNER)
+    // ---------------------------------------------------------
+    const polaroidAnchor = new THREE.Group();
+    polaroidAnchor.position.set(-1.12, 1.50, 0.032);
+    polaroidAnchor.rotation.z = 0.048;
+    docGroup.add(polaroidAnchor);
+
+    const polaroidMaps = makePolaroidMaps();
+    const polaroidGeo = new THREE.PlaneGeometry(
+      POLAROID_W,
+      POLAROID_H,
+      POLAROID_SEG_X,
+      POLAROID_SEG_Y
+    );
+    const polaroidMat = new THREE.MeshStandardMaterial({
+      map: polaroidMaps.map,
+      roughnessMap: polaroidMaps.roughnessMap,
+      bumpMap: polaroidMaps.bumpMap,
+      bumpScale: 0.014,
+      roughness: 0.88,
+      metalness: 0.04,
+      side: THREE.FrontSide,
+    });
+    const polaroidMesh = new THREE.Mesh(polaroidGeo, polaroidMat);
+    polaroidMesh.castShadow = true;
+    polaroidMesh.receiveShadow = true;
+    polaroidAnchor.add(polaroidMesh);
+
+    const polaroidBackMat = new THREE.MeshStandardMaterial({
+      color: 0x3b3227,
+      roughness: 0.94,
+      metalness: 0.02,
+      side: THREE.BackSide,
+    });
+    const polaroidBackMesh = new THREE.Mesh(polaroidGeo, polaroidBackMat);
+    polaroidBackMesh.position.z = -0.007;
+    polaroidBackMesh.castShadow = true;
+    polaroidAnchor.add(polaroidBackMesh);
+
+    const polPosAttr = polaroidGeo.attributes.position;
+    const polVertCount = polPosAttr.count;
+    const polBaseCurl = new Float32Array(polVertCount);
+
+    for (let i = 0; i < polVertCount; i++) {
+      const vx = polPosAttr.getX(i);
+      const vy = polPosAttr.getY(i);
+      const u = clamp(vx / POLAROID_W + 0.5); // 0 (left) -> 1 (right)
+      const v = clamp(0.5 - vy / POLAROID_H); // 0 (top) -> 1 (bottom)
+
+      // Top-left clip-pin holds (u≈0.12, v≈0.08) flush; bottom-right (u=1, v=1) curls realistically upward!
+      const du = clamp((u - 0.07) / 0.93);
+      const dv = clamp((v - 0.05) / 0.95);
+      const lift =
+        Math.pow(du, 1.52) * Math.pow(dv, 1.42) * 0.46 +
+        Math.pow(du, 2.3) * 0.045 +
+        Math.pow(dv, 2.3) * 0.025;
+      polBaseCurl[i] = lift;
+      polPosAttr.setZ(i, lift);
+    }
+    polaroidGeo.computeVertexNormals();
+
+    // ---------------------------------------------------------
+    // 3. RUSTY 3D CLIP-PIN HOLDING TOP-LEFT CORNER OF POLAROID
+    // ---------------------------------------------------------
+    const rustTextures = makeRustyMetalTextures();
+    const clipPin = makeRustyClipPin(rustTextures);
+    clipPin.position.set(-POLAROID_W * 0.35, POLAROID_H * 0.43, 0.014);
+    clipPin.rotation.z = 0.24;
+    clipPin.scale.setScalar(1.22);
+    polaroidAnchor.add(clipPin);
+
+    // Floating dust motes drifting across the flashlight cone.
+    const DUST_COUNT = 140;
+    const dustPositions = new Float32Array(DUST_COUNT * 3);
+    const dustVels = [];
+    for (let i = 0; i < DUST_COUNT; i++) {
+      dustPositions[i * 3] = (Math.random() - 0.5) * 9;
+      dustPositions[i * 3 + 1] = (Math.random() - 0.5) * 9;
+      dustPositions[i * 3 + 2] = 0.4 + Math.random() * 2.8;
+      dustVels.push({
+        vx: (Math.random() - 0.5) * 0.12,
+        vy: 0.03 + Math.random() * 0.08,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+    const dustGeo = new THREE.BufferGeometry();
+    dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPositions, 3));
+    const dustSprite = makeDustSpriteTexture();
+    const dustMat = new THREE.PointsMaterial({
+      map: dustSprite,
+      size: 0.07,
+      transparent: true,
+      opacity: 0.38,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const dustPoints = new THREE.Points(dustGeo, dustMat);
+    scene.add(dustPoints);
+
+    // Interactive state & physics variables.
+    const raycaster = new THREE.Raycaster();
+    const pointerNdc = new THREE.Vector2(0, 0);
+    const docPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+    const desiredSpot = new THREE.Vector3(0, 0.2, 0);
+    const springSpot = new THREE.Vector3(-0.6, 0.8, 0);
+    const spotVel = new THREE.Vector3();
+    const hitPoint = new THREE.Vector3();
+    const localHit = new THREE.Vector3();
+
+    let baseCamZ = 9.2;
+    let pointerSpeedX = 0;
+    let pointerSpeedY = 0;
+    let lastClientX = window.innerWidth * 0.5;
+    let lastClientY = window.innerHeight * 0.5;
+
+    // Polaroid lifted corner spring physics (press & spring back up!).
+    let curlScale = 1.0;
+    let curlVel = 0;
+    let hoveringPolaroid = false;
+
+    // Smooth entry settle animation for the whole document.
+    let entryProgress = 0;
+
+    const applyPaperImpulse = (worldPt, strength, radius = 1.15) => {
+      localHit.copy(worldPt);
+      paperMesh.worldToLocal(localHit);
+      const rSq = radius * radius;
+      for (let i = 0; i < paperVertCount; i++) {
+        const dx = paperPosAttr.getX(i) - localHit.x;
+        const dy = paperPosAttr.getY(i) - localHit.y;
+        const dSq = dx * dx + dy * dy;
+        if (dSq < rSq) {
+          const falloff = 1 - dSq / rSq;
+          const free = 1.15 - paperPinned[i] * 0.85;
+          paperVel[i] += strength * falloff * free;
+        }
+      }
+    };
+
+    const handlePointerMove = (event) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      pointerNdc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      pointerNdc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+      const dx = (event.clientX - lastClientX) / rect.width;
+      const dy = (event.clientY - lastClientY) / rect.height;
+      lastClientX = event.clientX;
+      lastClientY = event.clientY;
+      pointerSpeedX = clamp(pointerSpeedX + dx * 16, -6, 6);
+      pointerSpeedY = clamp(pointerSpeedY + dy * 16, -6, 6);
+
+      if (cursorRef.current) {
+        cursorRef.current.style.transform = `translate3d(${event.clientX}px, ${event.clientY}px, 0)`;
+      }
+
+      raycaster.setFromCamera(pointerNdc, camera);
+      if (raycaster.ray.intersectPlane(docPlane, hitPoint)) {
+        desiredSpot.copy(hitPoint);
+        const speedMag = Math.hypot(dx, dy);
+        if (speedMag > 0.008) {
+          applyPaperImpulse(hitPoint, -Math.min(0.45, speedMag * 7.5), 0.9);
+        }
+      }
+
+      const polHits = raycaster.intersectObject(polaroidMesh, false);
+      const isOverPolaroid = polHits.length > 0;
+      hoveringPolaroid = isOverPolaroid;
+      if (isOverPolaroid && Math.hypot(dx, dy) > 0.01) {
+        curlVel += (Math.random() - 0.5) * 0.9;
+      }
+
+      const targetEl = event.target instanceof Element ? event.target : null;
+      const domInteractive = Boolean(targetEl?.closest("a, button"));
+      setCursorHovered(domInteractive || isOverPolaroid);
+    };
+
+    const handlePointerDown = (event) => {
+      if (event.button !== 0) return;
+      const rect = renderer.domElement.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      pointerNdc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      pointerNdc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointerNdc, camera);
+
+      const polHits = raycaster.intersectObject(polaroidMesh, false);
+      if (polHits.length > 0) {
+        // Press lifted corner down toward the paper and let it spring back!
+        curlVel -= 6.8;
+        applyPaperImpulse(polHits[0].point, -1.8, 1.35);
+        return;
+      }
+
+      const paperHits = raycaster.intersectObject(paperMesh, false);
+      if (paperHits.length > 0) {
+        applyPaperImpulse(paperHits[0].point, -2.4, 1.45);
+      }
+    };
+
+    const resize = () => {
+      const width = mount.clientWidth;
+      const height = mount.clientHeight;
+      if (!width || !height) return;
+      const aspect = width / height;
+      camera.aspect = aspect;
+      camera.fov = aspect < 0.9 ? 46 : 42;
+      camera.updateProjectionMatrix();
+
+      const tanHalfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+      const distForH = 3.55 / tanHalfFov;
+      const distForW = 2.65 / (tanHalfFov * Math.max(aspect, 0.38));
+      baseCamZ = Math.max(distForH, distForW);
+
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+      renderer.setSize(width, height);
+    };
+
+    const resizeObserver = new ResizeObserver(resize);
+    resizeObserver.observe(mount);
+    window.addEventListener("resize", resize);
+    renderer.domElement.addEventListener("pointermove", handlePointerMove, { passive: true });
+    renderer.domElement.addEventListener("pointerdown", handlePointerDown, { passive: true });
+    resize();
+
+    const cols = PAPER_SEG_X + 1;
+    const rows = PAPER_SEG_Y + 1;
+    let frameId = 0;
+    let prevTime = performance.now();
+
+    const animate = (now) => {
+      const dt = Math.min((now - prevTime) / 1000, 0.032);
+      prevTime = now;
+      const elapsed = now / 1000;
+
+      // 1. Smooth entry settle.
+      entryProgress = Math.min(1, entryProgress + dt * 1.45);
+      const entryEase = 1 - Math.pow(1 - entryProgress, 3);
+
+      // 2. Smooth handheld flashlight tracking & subtle camera parallax.
+      const sx = 125 * (desiredSpot.x - springSpot.x) - 18 * spotVel.x;
+      const sy = 125 * (desiredSpot.y - springSpot.y) - 18 * spotVel.y;
+      spotVel.x += sx * dt;
+      spotVel.y += sy * dt;
+      springSpot.x += spotVel.x * dt;
+      springSpot.y += spotVel.y * dt;
+
+      flashlight.position.set(
+        -0.65 + springSpot.x * 0.28,
+        -1.05 + springSpot.y * 0.28,
+        5.1
+      );
+      flashlight.target.position.copy(springSpot);
+      flashlight.target.updateMatrixWorld();
+
+      redGlow.intensity = 3.0 + Math.sin(elapsed * 6.5) * 0.28 + Math.sin(elapsed * 21) * 0.14;
+
+      // Subtle camera inspection tilt based on pointer offset.
+      const camTargetX = pointerNdc.x * 0.32;
+      const camTargetY = pointerNdc.y * 0.22;
+      camera.position.x += (camTargetX - camera.position.x) * Math.min(1, dt * 6);
+      camera.position.y += (camTargetY - camera.position.y) * Math.min(1, dt * 6);
+      camera.position.z = baseCamZ + (1 - entryEase) * 0.9;
+      camera.lookAt(0, -0.05, 0);
+
+      docGroup.rotation.z = -0.015 + (1 - entryEase) * 0.04;
+      docGroup.position.y = -0.08 - (1 - entryEase) * 0.35;
+
+      // 3. Polaroid lifted bottom-right corner spring physics.
+      const targetCurl = hoveringPolaroid
+        ? 1.04 + Math.sin(elapsed * 2.6) * 0.035
+        : 1.0 + Math.sin(elapsed * 1.3) * 0.018;
+      const curlAccel = 145 * (targetCurl - curlScale) - 8.8 * curlVel;
+      curlVel += curlAccel * dt;
+      curlScale = Math.max(0.22, curlScale + curlVel * dt);
+
+      for (let i = 0; i < polVertCount; i++) {
+        polPosAttr.setZ(i, polBaseCurl[i] * curlScale);
+      }
+      polPosAttr.needsUpdate = true;
+      polaroidGeo.computeVertexNormals();
+
+      // 4. Real-time paper cloth/spring physics with neighbor tension.
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const i = r * cols + c;
+          let neighborAvg = 0;
+          let nCount = 0;
+          if (c > 0) {
+            neighborAvg += paperDisp[i - 1];
+            nCount++;
+          }
+          if (c < cols - 1) {
+            neighborAvg += paperDisp[i + 1];
+            nCount++;
+          }
+          if (r > 0) {
+            neighborAvg += paperDisp[i - cols];
+            nCount++;
+          }
+          if (r < rows - 1) {
+            neighborAvg += paperDisp[i + cols];
+            nCount++;
+          }
+          neighborAvg = nCount > 0 ? neighborAvg / nCount : 0;
+
+          const freeWeight = 1.08 - paperPinned[i] * 0.86;
+          const draft =
+            Math.sin(elapsed * 1.45 + c * 0.12 + r * 0.09) * 0.045 * freeWeight;
+          const force =
+            -44 * paperDisp[i] +
+            24 * (neighborAvg - paperDisp[i]) -
+            5.8 * paperVel[i] +
+            draft;
+
+          paperVel[i] += force * dt;
+          paperNext[i] = clamp(paperDisp[i] + paperVel[i] * dt, -0.28, 0.28);
+        }
+      }
+
+      for (let i = 0; i < paperVertCount; i++) {
+        paperDisp[i] = paperNext[i];
+        paperPosAttr.setZ(i, paperRestZ[i] + paperDisp[i]);
+      }
+      paperPosAttr.needsUpdate = true;
+      paperGeo.computeVertexNormals();
+
+      // 5. Dust motes drifting across the examination table.
+      const dArr = dustGeo.attributes.position.array;
+      for (let i = 0; i < DUST_COUNT; i++) {
+        const dv = dustVels[i];
+        const idx = i * 3;
+        dv.vx = dv.vx * Math.exp(-1.5 * dt) + pointerSpeedX * 0.04 * dt;
+        dv.vy = dv.vy * Math.exp(-1.2 * dt) + 0.025 * dt - pointerSpeedY * 0.03 * dt;
+        dArr[idx] += (dv.vx + Math.sin(elapsed * 0.8 + dv.phase) * 0.06) * dt;
+        dArr[idx + 1] += dv.vy * dt;
+        if (dArr[idx] > 4.6) dArr[idx] = -4.6;
+        if (dArr[idx] < -4.6) dArr[idx] = 4.6;
+        if (dArr[idx + 1] > 4.6) dArr[idx + 1] = -4.6;
+        if (dArr[idx + 1] < -4.6) dArr[idx + 1] = 4.6;
+      }
+      dustGeo.attributes.position.needsUpdate = true;
+      pointerSpeedX *= Math.exp(-7 * dt);
+      pointerSpeedY *= Math.exp(-7 * dt);
+
+      renderer.render(scene, camera);
+      frameId = requestAnimationFrame(animate);
+    };
+    frameId = requestAnimationFrame(animate);
+
+    return () => {
+      polaroidMaps.cancel();
+      cancelAnimationFrame(frameId);
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", resize);
+      renderer.domElement.removeEventListener("pointermove", handlePointerMove);
+      renderer.domElement.removeEventListener("pointerdown", handlePointerDown);
+
+      scene.traverse((obj) => {
+        if (obj.isMesh || obj.isPoints) {
+          obj.geometry?.dispose();
+          if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose());
+          else obj.material?.dispose();
+        }
+      });
+
+      backdropTextures.map.dispose();
+      backdropTextures.bumpMap.dispose();
+      paperMaps.map.dispose();
+      paperMaps.bumpMap.dispose();
+      paperMaps.roughnessMap.dispose();
+      paperMaps.alphaMap.dispose();
+      polaroidMaps.map.dispose();
+      polaroidMaps.roughnessMap.dispose();
+      polaroidMaps.bumpMap.dispose();
+      rustTextures.map.dispose();
+      rustTextures.bumpMap.dispose();
+      rustTextures.roughnessMap.dispose();
+      dustSprite.dispose();
+
+      renderer.dispose();
+      renderer.domElement.remove();
+    };
+  }, []);
+
   return (
-    <HorrorRoomShell
-      activeId="about"
-      code="IDENTITY / 001"
-      eyebrow="IDENTITY / 001 · SUBJECT DOSSIER"
-      title="Behind the screen."
-      subtitle="A person behind the pixels."
-    >
-      <div className="about-grid">
-        <div className="swing-stage">
-          <div className="pin-nail" aria-hidden="true" />
-          <div
-            ref={plateRef}
-            className="hanging-plate"
-            onClick={() => nudgePlate(nudgeCount % 2 === 0 ? 1 : -1)}
-            data-interactive="true"
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                nudgePlate(1);
-              }
-            }}
-          >
-            <div className="plate-wire" aria-hidden="true" />
-            <div className="plate-card">
-              <div className="plate-head">
-                <span>ARCHIVE / 01</span>
-                <span className="plate-stamp">VERIFIED</span>
-              </div>
-              <div className="silhouette-frame" aria-hidden="true">
-                <div className="silhouette-glow" />
-                <div className="silhouette-head" />
-                <div className="silhouette-shoulders" />
-                <div className="silhouette-scanline" />
-              </div>
-              <h2 className="plate-name">Luv Agarwal</h2>
-              <p className="plate-role">
-                FULL-STACK &amp; INTERACTIVE 3D DEVELOPER
-              </p>
-              <p className="plate-meta">
-                Heritage Institute of Technology · Kolkata, India
-              </p>
-              <span className="plate-hint">CLICK BADGE TO SWING</span>
-            </div>
-          </div>
-        </div>
+    <main className="about-room">
+      <div ref={mountRef} className="about-three-mount" />
 
-        <div className="about-narrative">
-          <PhysicsTiltCard pinned={false} className="dossier-card">
-            <div className="dossier-pad">
-              <div className="dossier-kicker">SUBJECT OVERVIEW</div>
-              <p className="dossier-lead">
-                I build web products that bridge sturdy full-stack engineering with
-                moody, real-time interactive worlds. From campus commerce platforms
-                powered by Next.js and MongoDB to custom WebGL rooms with
-                procedural textures and spring physics.
-              </p>
-              <p className="dossier-sub">
-                Whether architecting authentication flows, tuning shaders, or
-                debugging subtle edge cases, my focus stays simple: make the
-                experience unforgettable without sacrificing reliability.
-              </p>
-
-              <div ref={uvRef} className="uv-note-box">
-                <div className="uv-note-header">
-                  <span>CLASSIFIED MARGIN NOTE · MOVE LIGHT OVER TEXT</span>
-                </div>
-                <p className="uv-secret-text">
-                  &ldquo;Clean architecture under the hood, atmospheric tension on
-                  the surface. Every pixel, shadow, and millisecond of motion is
-                  intentional.&rdquo;
-                </p>
-              </div>
-
-              <div className="about-actions">
-                <Link
-                  href="/projects"
-                  className="horror-btn"
-                  data-interactive="true"
-                >
-                  INSPECT CASE FILES →
-                </Link>
-                <Link
-                  href="/contact"
-                  className="horror-btn horror-btn-ghost"
-                  data-interactive="true"
-                >
-                  SEND TRANSMISSION
-                </Link>
-              </div>
-            </div>
-          </PhysicsTiltCard>
-        </div>
+      <div
+        ref={cursorRef}
+        className={`about-cursor ${cursorHovered ? "is-target" : ""}`}
+        aria-hidden="true"
+      >
+        <span />
       </div>
 
-      <section className="principles-section">
-        <div className="section-label">OPERATING PRINCIPLES</div>
-        <div className="principles-grid">
-          {PRINCIPLES.map((item) => (
-            <PhysicsTiltCard key={item.code} className="principle-card">
-              <div className="principle-pad">
-                <span className="principle-code">{item.code}</span>
-                <h3>{item.title}</h3>
-                <p>{item.body}</p>
-              </div>
-            </PhysicsTiltCard>
-          ))}
-        </div>
-      </section>
+      <header className="about-hud-top">
+        <Link href="/" className="brand-mark">
+          <span className="brand-symbol">L.</span>
+          <span className="brand-stack">
+            <span className="brand-name">THE UNKNOWN ROOM</span>
+            <span className="brand-sub">← RETURN TO WALL</span>
+          </span>
+        </Link>
 
-      <style jsx>{`
-        .about-grid {
-          display: grid;
-          grid-template-columns: minmax(260px, 340px) 1fr;
-          gap: 36px;
-          align-items: start;
+        <nav className="hud-nav" aria-label="Archive Sections">
+          {NAV_LINKS.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`hud-link ${item.active ? "is-active" : ""}`}
+            >
+              <span>{item.code}</span>
+              <span>{item.label}</span>
+            </Link>
+          ))}
+        </nav>
+
+        <div className="hud-status">
+          <span className="status-dot" />
+          <span>IDENTITY / 001</span>
+        </div>
+      </header>
+
+      <div className="about-hud-bottom">
+        <span>MOVE LIGHT TO EXAMINE · CLICK POLAROID OR PAPER TO TOUCH</span>
+      </div>
+
+      <div ref={veilRef} className="entry-veil" aria-hidden="true" />
+
+      <style jsx global>{`
+        html,
+        body {
+          margin: 0;
+          padding: 0;
+          background: #030304;
+          overflow: hidden;
         }
-        .swing-stage {
+        .about-room {
           position: relative;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          padding-top: 12px;
+          width: 100%;
+          height: 100svh;
+          min-height: 580px;
+          overflow: hidden;
+          background: #040303;
+          color: #e7dcc7;
+          font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
         }
-        .pin-nail {
-          width: 12px;
-          height: 12px;
-          border-radius: 50%;
-          background: radial-gradient(circle at 35% 35%, #d6bc8e, #59462d 78%);
-          box-shadow: 0 3px 10px #000;
-          z-index: 3;
+        @media (hover: hover) and (pointer: fine) {
+          .about-room,
+          .about-room a {
+            cursor: none;
+          }
         }
-        .hanging-plate {
-          transform-origin: top center;
-          will-change: transform;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
+        .about-three-mount {
+          position: absolute;
+          inset: 0;
+          z-index: 1;
+        }
+        .about-three-canvas {
+          display: block;
+          width: 100%;
+          height: 100%;
           outline: none;
         }
-        .plate-wire {
-          width: 1px;
-          height: 28px;
-          background: linear-gradient(
-            180deg,
-            rgba(212, 185, 138, 0.75),
-            rgba(212, 185, 138, 0.25)
-          );
+        .about-cursor {
+          display: none;
         }
-        .plate-card {
-          width: 100%;
-          max-width: 310px;
-          padding: 20px;
-          border: 1px solid rgba(208, 186, 148, 0.34);
-          background: linear-gradient(
-            165deg,
-            rgba(32, 27, 22, 0.94),
-            rgba(14, 12, 11, 0.96)
-          );
-          box-shadow: 0 28px 55px rgba(0, 0, 0, 0.85);
-          transition: border-color 0.25s ease;
+        @media (hover: hover) and (pointer: fine) {
+          .about-cursor {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 40;
+            width: 28px;
+            height: 28px;
+            margin: -14px 0 0 -14px;
+            pointer-events: none;
+            will-change: transform, width, height;
+            border: 1px solid rgba(255, 232, 194, 0.72);
+            border-radius: 50%;
+            box-shadow: 0 0 12px rgba(255, 210, 148, 0.25);
+            transition: width 0.16s ease, height 0.16s ease, margin 0.16s ease,
+              border-color 0.16s ease;
+          }
+          .about-cursor.is-target {
+            width: 38px;
+            height: 38px;
+            margin: -19px 0 0 -19px;
+            border-color: rgba(212, 165, 102, 0.95);
+          }
+          .about-cursor::before,
+          .about-cursor::after {
+            content: "";
+            position: absolute;
+            background: rgba(255, 232, 194, 0.72);
+          }
+          .about-cursor::before {
+            width: 40px;
+            height: 1px;
+            left: -7px;
+            top: 50%;
+          }
+          .about-cursor::after {
+            height: 40px;
+            width: 1px;
+            top: -7px;
+            left: 50%;
+          }
+          .about-cursor span {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            border-radius: 50%;
+            background: #ffe8c4;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+          }
         }
-        .hanging-plate:hover .plate-card {
-          border-color: rgba(212, 185, 138, 0.65);
-        }
-        .plate-head {
+        .about-hud-top {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          z-index: 25;
+          padding: 20px 32px;
           display: flex;
-          justify-content: space-between;
           align-items: center;
-          font: 9px var(--font-geist-mono), monospace;
-          letter-spacing: 2px;
-          color: rgba(220, 204, 176, 0.65);
-          margin-bottom: 14px;
-        }
-        .plate-stamp {
-          color: #cf6b60;
-          border: 1px solid rgba(176, 48, 56, 0.6);
-          padding: 2px 6px;
-        }
-        .silhouette-frame {
-          position: relative;
-          height: 175px;
-          border: 1px solid rgba(208, 186, 148, 0.2);
-          background: #1b1713;
-          overflow: hidden;
-          margin-bottom: 16px;
-        }
-        .silhouette-glow {
-          position: absolute;
-          inset: 0;
-          background: radial-gradient(
-            circle at 50% 42%,
-            rgba(233, 211, 170, 0.38),
-            rgba(34, 28, 22, 0.92) 72%
-          );
-        }
-        .silhouette-head {
-          position: absolute;
-          top: 34px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 58px;
-          height: 58px;
-          border-radius: 50%;
-          background: #171512;
-        }
-        .silhouette-shoulders {
-          position: absolute;
-          bottom: -36px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 144px;
-          height: 105px;
-          border-radius: 50%;
-          background: #171512;
-        }
-        .silhouette-scanline {
-          position: absolute;
-          inset: 0;
-          background: repeating-linear-gradient(
-            0deg,
-            rgba(255, 232, 196, 0.03) 0px,
-            rgba(255, 232, 196, 0.03) 1px,
-            transparent 1px,
-            transparent 4px
-          );
-        }
-        .plate-name {
-          margin: 0 0 6px;
-          font: 400 24px Georgia, serif;
-          color: #efe4cf;
-        }
-        .plate-role {
-          margin: 0 0 8px;
-          font: 9px var(--font-geist-mono), monospace;
-          letter-spacing: 1.6px;
-          color: #bba47d;
-        }
-        .plate-meta {
-          margin: 0 0 14px;
-          font-size: 12px;
-          color: rgba(224, 212, 190, 0.62);
-        }
-        .plate-hint {
-          display: block;
-          font: 8px var(--font-geist-mono), monospace;
-          letter-spacing: 1.8px;
-          color: rgba(203, 180, 138, 0.52);
-          border-top: 1px dashed rgba(208, 186, 148, 0.2);
-          padding-top: 10px;
-        }
-        .dossier-pad {
-          padding: 28px 30px;
-        }
-        .dossier-kicker {
-          font: 9px var(--font-geist-mono), monospace;
-          letter-spacing: 2.5px;
-          color: #b6a281;
-          margin-bottom: 14px;
-        }
-        .dossier-lead {
-          margin: 0 0 16px;
-          font: 400 20px / 1.55 Georgia, serif;
-          color: #ece1cc;
-        }
-        .dossier-sub {
-          margin: 0 0 24px;
-          font-size: 14px;
-          line-height: 1.75;
-          color: rgba(224, 212, 190, 0.72);
-        }
-        .uv-note-box {
-          position: relative;
-          padding: 18px 20px;
-          border: 1px dashed rgba(176, 48, 56, 0.45);
-          background: rgba(18, 10, 11, 0.72);
-          margin-bottom: 24px;
-          overflow: hidden;
-        }
-        .uv-note-box::after {
-          content: "";
-          position: absolute;
-          inset: 0;
+          justify-content: space-between;
+          gap: 16px;
           pointer-events: none;
-          background: radial-gradient(
-            190px circle at var(--uv-x, 50%) var(--uv-y, 50%),
-            rgba(255, 224, 168, 0.14),
-            rgba(3, 3, 5, 0.72) 78%
-          );
         }
-        .uv-note-header {
-          position: relative;
-          z-index: 2;
-          font: 8px var(--font-geist-mono), monospace;
+        .brand-mark {
+          pointer-events: auto;
+          display: flex;
+          align-items: center;
+          gap: 11px;
+          color: #d9c9ad;
+          text-decoration: none;
+        }
+        .brand-symbol {
+          width: 34px;
+          height: 34px;
+          display: grid;
+          place-items: center;
+          border: 1px solid rgba(220, 198, 160, 0.5);
+          background: rgba(12, 10, 9, 0.7);
+          font: 16px Georgia, serif;
+        }
+        .brand-stack {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .brand-name {
+          font: 9px var(--font-geist-mono), monospace;
           letter-spacing: 2px;
-          color: #cf7268;
-          margin-bottom: 8px;
         }
-        .uv-secret-text {
-          position: relative;
-          z-index: 2;
-          margin: 0;
-          font: italic 16px / 1.6 Georgia, serif;
-          color: #e4d4b7;
+        .brand-sub {
+          font: 8px var(--font-geist-mono), monospace;
+          letter-spacing: 1.5px;
+          color: rgba(212, 185, 138, 0.7);
         }
-        .about-actions {
+        .hud-nav {
+          pointer-events: auto;
           display: flex;
           flex-wrap: wrap;
-          gap: 12px;
+          gap: 8px;
         }
-        .horror-btn {
+        .hud-link {
           display: inline-flex;
-          align-items: center;
-          padding: 11px 18px;
-          border: 1px solid rgba(212, 185, 138, 0.55);
-          background: rgba(88, 18, 24, 0.48);
-          color: #f4e6cf;
-          font: 10px var(--font-geist-mono), monospace;
-          letter-spacing: 1.8px;
+          gap: 5px;
+          padding: 5px 10px;
+          border: 1px solid rgba(212, 192, 156, 0.16);
+          background: rgba(10, 9, 8, 0.65);
+          color: rgba(223, 212, 192, 0.62);
+          font: 8px var(--font-geist-mono), monospace;
+          letter-spacing: 1.4px;
           text-decoration: none;
-          transition: background 0.2s ease, border-color 0.2s ease,
-            transform 0.2s ease;
+          transition: border-color 0.2s ease, color 0.2s ease;
         }
-        .horror-btn:hover {
-          background: rgba(126, 24, 32, 0.65);
-          border-color: #ebd6af;
-          transform: translateY(-2px);
+        .hud-link:hover {
+          border-color: rgba(212, 185, 138, 0.52);
+          color: #f3e6d0;
         }
-        .horror-btn-ghost {
-          background: rgba(14, 13, 12, 0.75);
-          border-color: rgba(212, 185, 138, 0.28);
+        .hud-link.is-active {
+          border-color: rgba(168, 42, 48, 0.72);
+          color: #f3e4cb;
         }
-        .principles-section {
-          margin-top: 52px;
+        .hud-status {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: rgba(223, 212, 192, 0.56);
+          font: 8px var(--font-geist-mono), monospace;
+          letter-spacing: 1.6px;
         }
-        .section-label {
-          font: 10px var(--font-geist-mono), monospace;
-          letter-spacing: 2.6px;
-          color: rgba(212, 185, 138, 0.72);
-          margin-bottom: 22px;
+        .status-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #9f262e;
+          box-shadow: 0 0 9px #b92a33;
         }
-        .principles-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-          gap: 22px;
+        .about-hud-bottom {
+          position: absolute;
+          left: 50%;
+          bottom: 18px;
+          transform: translateX(-50%);
+          z-index: 25;
+          width: max-content;
+          max-width: 92%;
+          text-align: center;
+          color: rgba(221, 207, 181, 0.64);
+          font: 8px var(--font-geist-mono), monospace;
+          letter-spacing: 1.5px;
+          pointer-events: none;
+          text-shadow: 0 2px 10px #000;
         }
-        .principle-pad {
-          padding: 24px 22px;
-        }
-        .principle-code {
-          display: block;
-          font: 9px var(--font-geist-mono), monospace;
-          letter-spacing: 2px;
-          color: #a68c64;
-          margin-bottom: 10px;
-        }
-        .principle-pad h3 {
-          margin: 0 0 10px;
-          font: 400 20px Georgia, serif;
-          color: #efe3cb;
-        }
-        .principle-pad p {
-          margin: 0;
-          font-size: 13px;
-          line-height: 1.68;
-          color: rgba(224, 212, 190, 0.68);
+        .entry-veil {
+          position: fixed;
+          inset: 0;
+          z-index: 60;
+          background: #020103;
+          opacity: 1;
+          pointer-events: none;
+          transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1);
         }
         @media (max-width: 820px) {
-          .about-grid {
-            grid-template-columns: 1fr;
+          .about-hud-top {
+            padding: 14px 16px;
+            flex-wrap: wrap;
+          }
+          .hud-nav {
+            order: 3;
+            width: 100%;
+          }
+          .about-hud-bottom {
+            font-size: 7px;
+            bottom: 12px;
           }
         }
       `}</style>
-    </HorrorRoomShell>
+    </main>
   );
 }
