@@ -4,13 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import * as THREE from "three";
 
-const PAPER_W = 4.6;
-const PAPER_H = 5.9;
-const PAPER_SEG_X = 44;
-const PAPER_SEG_Y = 56;
+const PAPER_W = 6.2;
+const PAPER_H = 5.3;
+const PAPER_SEG_X = 48;
+const PAPER_SEG_Y = 44;
 
-const POLAROID_W = 1.78;
-const POLAROID_H = 2.16;
+const POLAROID_W = 1.65;
+const POLAROID_H = 2.00;
 const POLAROID_SEG_X = 26;
 const POLAROID_SEG_Y = 32;
 
@@ -205,8 +205,8 @@ function makeRustyMetalTextures() {
 }
 
 function makeRustyPaperMaps() {
-  const w = 1400;
-  const h = 1800;
+  const w = 1860;
+  const h = 1590;
 
   const cCanvas = document.createElement("canvas");
   cCanvas.width = w;
@@ -230,19 +230,19 @@ function makeRustyPaperMaps() {
 
   const rand = seededRand(4004);
 
-  // 1. Base aged rusty parchment wash.
-  const baseGrad = ctx.createRadialGradient(w * 0.48, h * 0.46, 120, w * 0.5, h * 0.5, h * 0.72);
-  baseGrad.addColorStop(0, "#b89b70");
-  baseGrad.addColorStop(0.55, "#9c7c52");
-  baseGrad.addColorStop(0.88, "#775633");
-  baseGrad.addColorStop(1, "#52371d");
+  // 1. Readable aged rusty parchment wash (bright enough for crisp ink, weathered edges).
+  const baseGrad = ctx.createRadialGradient(w * 0.5, h * 0.48, 160, w * 0.5, h * 0.5, w * 0.66);
+  baseGrad.addColorStop(0, "#dccaa6");
+  baseGrad.addColorStop(0.58, "#c7ae83");
+  baseGrad.addColorStop(0.88, "#9c7e54");
+  baseGrad.addColorStop(1, "#70522e");
   ctx.fillStyle = baseGrad;
   ctx.fillRect(0, 0, w, h);
 
   bCtx.fillStyle = "#808080";
   bCtx.fillRect(0, 0, w, h);
 
-  rCtx.fillStyle = "#e0e0e0";
+  rCtx.fillStyle = "#e6e6e6";
   rCtx.fillRect(0, 0, w, h);
 
   // Irregular ragged torn edge alpha mask.
@@ -251,18 +251,18 @@ function makeRustyPaperMaps() {
   aCtx.fillStyle = "#ffffff";
   aCtx.beginPath();
   const margin = 16;
-  const step = 14;
+  const step = 16;
   for (let x = margin; x <= w - margin; x += step) {
-    const jitter = (rand() - 0.5) * 14 - (x > w * 0.78 ? (x - w * 0.78) * 0.08 : 0);
+    const jitter = (rand() - 0.5) * 14 - (x > w * 0.80 ? (x - w * 0.80) * 0.08 : 0);
     if (x === margin) aCtx.moveTo(x, margin + jitter);
     else aCtx.lineTo(x, margin + Math.max(2, jitter));
   }
   for (let y = margin; y <= h - margin; y += step) {
-    const notch = y > h * 0.42 && y < h * 0.52 ? -22 * Math.sin(((y - h * 0.42) / (h * 0.1)) * Math.PI) : 0;
+    const notch = y > h * 0.42 && y < h * 0.52 ? -20 * Math.sin(((y - h * 0.42) / (h * 0.1)) * Math.PI) : 0;
     aCtx.lineTo(w - margin + (rand() - 0.5) * 14 + notch, y);
   }
   for (let x = w - margin; x >= margin; x -= step) {
-    const notch = x < w * 0.24 ? -18 * (1 - x / (w * 0.24)) : 0;
+    const notch = x < w * 0.22 ? -18 * (1 - x / (w * 0.22)) : 0;
     aCtx.lineTo(x, h - margin + (rand() - 0.5) * 16 + notch);
   }
   for (let y = h - margin; y >= margin; y -= step) {
@@ -271,19 +271,19 @@ function makeRustyPaperMaps() {
   aCtx.closePath();
   aCtx.fill();
 
-  // 2. Rusty water-blotch clouds & foxing stains.
+  // 2. Rusty water-blotch clouds & foxing stains (subtle in center so text stays sharp).
   for (let i = 0; i < 42; i++) {
     const cx = rand() * w;
     const cy = rand() * h;
-    const rad = 70 + rand() * 240;
+    const rad = 80 + rand() * 250;
     const g = ctx.createRadialGradient(cx, cy, 8, cx, cy, rad);
-    if (rand() > 0.4) {
-      g.addColorStop(0, `rgba(98, 58, 26, ${0.08 + rand() * 0.14})`);
-      g.addColorStop(0.65, `rgba(116, 70, 32, ${0.06 + rand() * 0.08})`);
-      g.addColorStop(1, "rgba(116, 70, 32, 0)");
+    if (rand() > 0.45) {
+      g.addColorStop(0, `rgba(112, 68, 30, ${0.04 + rand() * 0.08})`);
+      g.addColorStop(0.65, `rgba(128, 80, 38, ${0.03 + rand() * 0.05})`);
+      g.addColorStop(1, "rgba(128, 80, 38, 0)");
     } else {
-      g.addColorStop(0, `rgba(210, 182, 134, ${0.06 + rand() * 0.10})`);
-      g.addColorStop(1, "rgba(210, 182, 134, 0)");
+      g.addColorStop(0, `rgba(232, 212, 174, ${0.05 + rand() * 0.08})`);
+      g.addColorStop(1, "rgba(232, 212, 174, 0)");
     }
     ctx.fillStyle = g;
     ctx.beginPath();
@@ -293,12 +293,12 @@ function makeRustyPaperMaps() {
 
   // Aged cup / rust ring stain on lower-right edge.
   ctx.save();
-  ctx.translate(w * 0.81, h * 0.87);
+  ctx.translate(w * 0.89, h * 0.88);
   for (let ring = 0; ring < 3; ring++) {
     ctx.strokeStyle = `rgba(74, 41, 16, ${0.22 - ring * 0.05})`;
     ctx.lineWidth = 4 + ring * 2.5;
     ctx.beginPath();
-    ctx.ellipse(ring * 2, -ring * 1.5, 92 + ring * 3, 86 + ring * 3, 0.3, 0.2, Math.PI * 1.85);
+    ctx.ellipse(ring * 2, -ring * 1.5, 88 + ring * 3, 82 + ring * 3, 0.3, 0.2, Math.PI * 1.85);
     ctx.stroke();
   }
   ctx.restore();
@@ -307,22 +307,22 @@ function makeRustyPaperMaps() {
   for (let i = 0; i < 240; i++) {
     const x = rand() * w;
     const y = rand() * h;
-    const r = 1.5 + rand() * 7;
-    ctx.fillStyle = `rgba(92, 46, 18, ${0.09 + rand() * 0.18})`;
+    const r = 1.5 + rand() * 6.5;
+    ctx.fillStyle = `rgba(98, 52, 22, ${0.07 + rand() * 0.14})`;
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
   }
 
   // 3. Paper fiber grain & organic speckles in albedo + bump.
-  for (let i = 0; i < 26000; i++) {
+  for (let i = 0; i < 28000; i++) {
     const x = rand() * w;
     const y = rand() * h;
-    const a = rand() * 0.09;
-    ctx.fillStyle = rand() > 0.5 ? `rgba(38, 24, 12, ${a})` : `rgba(235, 212, 174, ${a * 0.85})`;
+    const a = rand() * 0.075;
+    ctx.fillStyle = rand() > 0.5 ? `rgba(42, 26, 14, ${a})` : `rgba(244, 224, 188, ${a * 0.85})`;
     ctx.fillRect(x, y, 1 + rand() * 2.8, 1 + rand() * 2.2);
 
-    bCtx.fillStyle = rand() > 0.5 ? "rgba(40,40,40,0.14)" : "rgba(215,215,215,0.14)";
+    bCtx.fillStyle = rand() > 0.5 ? "rgba(42,42,42,0.13)" : "rgba(215,215,215,0.13)";
     bCtx.fillRect(x, y, 2, 2);
   }
 
@@ -333,38 +333,38 @@ function makeRustyPaperMaps() {
     const y = rand() * h;
     const angle = rand() * Math.PI * 2;
     const len = 5 + rand() * 14;
-    ctx.strokeStyle = rand() > 0.5 ? "rgba(56, 38, 22, 0.08)" : "rgba(222, 198, 155, 0.08)";
+    ctx.strokeStyle = rand() > 0.5 ? "rgba(56, 38, 22, 0.065)" : "rgba(232, 210, 170, 0.065)";
     ctx.beginPath();
     ctx.moveTo(x, y);
     ctx.lineTo(x + Math.cos(angle) * len, y + Math.sin(angle) * len);
     ctx.stroke();
   }
 
-  // 4. Fold creases (horizontal center & vertical offset) in both albedo and bump.
+  // 4. Fold creases (horizontal & vertical) in both albedo and bump.
   const drawCrease = (x1, y1, x2, y2) => {
     ctx.save();
-    ctx.strokeStyle = "rgba(44, 28, 15, 0.22)";
+    ctx.strokeStyle = "rgba(52, 34, 18, 0.18)";
     ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.moveTo(x1, y1);
     ctx.lineTo(x2, y2);
     ctx.stroke();
 
-    ctx.strokeStyle = "rgba(232, 208, 168, 0.16)";
+    ctx.strokeStyle = "rgba(242, 224, 188, 0.16)";
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(x1 + 2, y1 + 3);
     ctx.lineTo(x2 + 2, y2 + 3);
     ctx.stroke();
 
-    bCtx.strokeStyle = "rgba(35,35,35,0.45)";
+    bCtx.strokeStyle = "rgba(38,38,38,0.42)";
     bCtx.lineWidth = 6;
     bCtx.beginPath();
     bCtx.moveTo(x1, y1);
     bCtx.lineTo(x2, y2);
     bCtx.stroke();
 
-    bCtx.strokeStyle = "rgba(220,220,220,0.42)";
+    bCtx.strokeStyle = "rgba(220,220,220,0.40)";
     bCtx.lineWidth = 3;
     bCtx.beginPath();
     bCtx.moveTo(x1 + 2, y1 + 4);
@@ -372,15 +372,15 @@ function makeRustyPaperMaps() {
     bCtx.stroke();
     ctx.restore();
   };
-  drawCrease(14, h * 0.485, w - 14, h * 0.495);
-  drawCrease(w * 0.49, 14, w * 0.482, h - 14);
+  drawCrease(14, h * 0.455, w - 14, h * 0.462);
+  drawCrease(w * 0.49, 14, w * 0.484, h - 14);
 
-  // 5. Burned stains & charred ember holes.
+  // 5. Burned stains & charred ember holes along edges & corners.
   const burnSpots = [
-    { x: w * 0.96, y: h * 0.12, rx: 145, ry: 165, hole: false },
-    { x: w * 0.08, y: h * 0.94, rx: 190, ry: 140, hole: false },
-    { x: w * 0.94, y: h * 0.47, rx: 88, ry: 110, hole: true },
-    { x: w * 0.16, y: h * 0.82, rx: 42, ry: 38, hole: true },
+    { x: w * 0.97, y: h * 0.11, rx: 145, ry: 155, hole: false },
+    { x: w * 0.05, y: h * 0.94, rx: 185, ry: 135, hole: false },
+    { x: w * 0.96, y: h * 0.50, rx: 84, ry: 105, hole: true },
+    { x: w * 0.04, y: h * 0.78, rx: 46, ry: 42, hole: true },
   ];
 
   for (const b of burnSpots) {
@@ -389,7 +389,7 @@ function makeRustyPaperMaps() {
     const halo = ctx.createRadialGradient(0, 0, b.rx * 0.18, 0, 0, b.rx);
     halo.addColorStop(0, "rgba(12, 8, 6, 0.94)");
     halo.addColorStop(0.38, "rgba(34, 18, 8, 0.85)");
-    halo.addColorStop(0.68, "rgba(104, 48, 12, 0.52)");
+    halo.addColorStop(0.68, "rgba(104, 48, 12, 0.50)");
     halo.addColorStop(0.88, "rgba(132, 74, 22, 0.18)");
     halo.addColorStop(1, "rgba(132, 74, 22, 0)");
     ctx.fillStyle = halo;
@@ -397,7 +397,6 @@ function makeRustyPaperMaps() {
     ctx.ellipse(0, 0, b.rx, b.ry, rand() * 0.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // Rough blistered soot in roughness & bump.
     rCtx.fillStyle = "rgba(250,250,250,0.65)";
     rCtx.beginPath();
     rCtx.ellipse(0, 0, b.rx * 0.6, b.ry * 0.6, 0, 0, Math.PI * 2);
@@ -410,7 +409,6 @@ function makeRustyPaperMaps() {
     bCtx.stroke();
 
     if (b.hole) {
-      // Actual burned-through pinhole in alphaMap.
       const holeR = b.rx * 0.24;
       aCtx.save();
       aCtx.translate(b.x, b.y);
@@ -430,40 +428,39 @@ function makeRustyPaperMaps() {
     ctx.restore();
   }
 
-  // Darkened charred edges around the whole sheet.
-  const edgeShade = ctx.createRadialGradient(w * 0.5, h * 0.5, w * 0.38, w * 0.5, h * 0.5, h * 0.68);
+  // Darkened charred perimeter vignette.
+  const edgeShade = ctx.createRadialGradient(w * 0.5, h * 0.5, w * 0.40, w * 0.5, h * 0.5, w * 0.66);
   edgeShade.addColorStop(0, "rgba(0,0,0,0)");
-  edgeShade.addColorStop(0.78, "rgba(38,22,10,0.22)");
-  edgeShade.addColorStop(1, "rgba(18,10,5,0.68)");
+  edgeShade.addColorStop(0.80, "rgba(42,24,10,0.18)");
+  edgeShade.addColorStop(1, "rgba(18,10,5,0.58)");
   ctx.fillStyle = edgeShade;
   ctx.fillRect(0, 0, w, h);
 
-  // 6. Tiny dried oxidized blood spatters (realistic small drops & spray flecks).
+  // 6. Tiny dried oxidized blood spatters along margins and corners.
   const drawBloodCluster = (cx, cy, count, spread, maxR) => {
     for (let i = 0; i < count; i++) {
       const ang = rand() * Math.PI * 2;
       const dist = Math.pow(rand(), 1.4) * spread;
       const x = cx + Math.cos(ang) * dist;
       const y = cy + Math.sin(ang) * dist;
-      const r = 1.2 + rand() * maxR;
+      const r = 1.4 + rand() * maxR;
       const stretch = 1 + rand() * 0.9;
 
       ctx.save();
       ctx.translate(x, y);
       ctx.rotate(ang);
       const drop = ctx.createRadialGradient(0, 0, r * 0.15, 0, 0, r * stretch);
-      drop.addColorStop(0, "rgba(42, 4, 7, 0.92)");
-      drop.addColorStop(0.65, "rgba(74, 10, 13, 0.82)");
-      drop.addColorStop(0.9, "rgba(52, 7, 9, 0.55)");
-      drop.addColorStop(1, "rgba(52, 7, 9, 0)");
+      drop.addColorStop(0, "rgba(44, 4, 7, 0.94)");
+      drop.addColorStop(0.65, "rgba(78, 10, 14, 0.84)");
+      drop.addColorStop(0.9, "rgba(54, 7, 9, 0.55)");
+      drop.addColorStop(1, "rgba(54, 7, 9, 0)");
       ctx.fillStyle = drop;
       ctx.beginPath();
       ctx.ellipse(0, 0, r * stretch, r, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
 
-      // Dried blood droplets are slightly glossy & raised in bump/roughness.
-      rCtx.fillStyle = "rgba(85,85,85,0.55)";
+      rCtx.fillStyle = "rgba(90,90,90,0.5)";
       rCtx.beginPath();
       rCtx.arc(x, y, r, 0, Math.PI * 2);
       rCtx.fill();
@@ -475,98 +472,93 @@ function makeRustyPaperMaps() {
     }
   };
 
-  // Subtle spatter clusters tucked along the margins and corners so all ink remains legible.
-  drawBloodCluster(w * 0.90, h * 0.25, 22, 75, 5.2);
-  drawBloodCluster(w * 0.055, h * 0.66, 18, 52, 4.2);
-  drawBloodCluster(w * 0.93, h * 0.78, 16, 55, 4.0);
-  drawBloodCluster(w * 0.54, h * 0.07, 11, 42, 3.2);
-  drawBloodCluster(w * 0.24, h * 0.91, 14, 55, 3.8);
+  drawBloodCluster(w * 0.93, h * 0.25, 22, 70, 5.5);
+  drawBloodCluster(w * 0.04, h * 0.64, 18, 48, 4.5);
+  drawBloodCluster(w * 0.95, h * 0.78, 16, 52, 4.2);
+  drawBloodCluster(w * 0.55, h * 0.045, 11, 42, 3.4);
+  drawBloodCluster(w * 0.22, h * 0.93, 14, 52, 4.0);
 
-  // 7. Typed & stamped dossier typography inked naturally onto the aged paper.
-  // Top-left area (x: 75..645, y: 95..775) stays open for the pinned Polaroid.
+  // 7. Large, high-contrast typed dossier copy (top-left x: 75..605, y: 80..695 reserved for Polaroid).
   ctx.save();
-  ctx.fillStyle = "rgba(28, 19, 13, 0.86)";
-  ctx.font = "bold 20px 'Courier New', monospace";
-  ctx.fillText("CASE DOSSIER // 001-ID", 695, 162);
+  ctx.fillStyle = "rgba(22, 15, 9, 0.92)";
+  ctx.font = "bold 24px 'Courier New', monospace";
+  ctx.fillText("CASE DOSSIER // 001-ID", 645, 138);
 
-  ctx.fillStyle = "rgba(86, 16, 18, 0.76)";
-  ctx.font = "bold 18px 'Courier New', monospace";
+  ctx.fillStyle = "rgba(96, 16, 18, 0.88)";
+  ctx.font = "bold 22px 'Courier New', monospace";
   ctx.textAlign = "right";
-  ctx.fillText("CONFIDENTIAL", 1290, 162);
+  ctx.fillText("CONFIDENTIAL", 1745, 138);
   ctx.textAlign = "left";
 
-  ctx.strokeStyle = "rgba(38, 26, 17, 0.55)";
+  ctx.strokeStyle = "rgba(32, 22, 14, 0.60)";
   ctx.lineWidth = 2.5;
   ctx.beginPath();
-  ctx.moveTo(695, 186);
-  ctx.lineTo(1290, 186);
+  ctx.moveTo(645, 164);
+  ctx.lineTo(1745, 164);
   ctx.stroke();
 
-  // Name & role block beside Polaroid.
-  ctx.fillStyle = "rgba(22, 15, 10, 0.92)";
-  ctx.font = "bold 62px Georgia, serif";
-  ctx.fillText("Luv Agarwal", 695, 272);
+  ctx.fillStyle = "rgba(16, 11, 7, 0.96)";
+  ctx.font = "bold 74px Georgia, serif";
+  ctx.fillText("Luv Agarwal", 645, 255);
 
-  ctx.fillStyle = "rgba(56, 36, 22, 0.88)";
-  ctx.font = "italic 28px Georgia, serif";
-  ctx.fillText("Builder · Developer · Curious Mind", 695, 322);
+  ctx.fillStyle = "rgba(44, 28, 16, 0.92)";
+  ctx.font = "italic 34px Georgia, serif";
+  ctx.fillText("Builder · Developer · Curious Mind", 645, 308);
 
   const fields = [
-    ["ORIGIN", "Kolkata & Howrah, West Bengal"],
-    ["STATUS", "B.Tech · 2nd Year (WBJEE)"],
-    ["FOCUS", "Web · Apps · Cyber · Robotics"],
-    ["DISPATCH", "luvag0707@gmail.com"],
+    ["ORIGIN", "Kolkata & Howrah, West Bengal", 645, 396],
+    ["STATUS", "B.Tech · 2nd Year (WBJEE)", 1210, 396],
+    ["FOCUS", "Web · Apps · Cyber · Robotics", 645, 514],
+    ["DISPATCH", "luvag0707@gmail.com", 1210, 514],
   ];
 
-  fields.forEach(([label, value], i) => {
-    const fy = 408 + i * 74;
-    ctx.fillStyle = "rgba(64, 42, 24, 0.75)";
-    ctx.font = "bold 18px 'Courier New', monospace";
-    ctx.fillText(label, 695, fy);
+  fields.forEach(([label, value, fx, fy]) => {
+    ctx.fillStyle = "rgba(56, 36, 20, 0.82)";
+    ctx.font = "bold 20px 'Courier New', monospace";
+    ctx.fillText(label, fx, fy);
 
-    ctx.fillStyle = "rgba(24, 17, 11, 0.90)";
-    ctx.font = "25px 'Courier New', monospace";
-    ctx.fillText(value, 695, fy + 31);
+    ctx.fillStyle = "rgba(18, 12, 7, 0.95)";
+    ctx.font = "bold 26px 'Courier New', monospace";
+    ctx.fillText(value, fx, fy + 36);
 
-    ctx.strokeStyle = "rgba(48, 32, 18, 0.24)";
-    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = "rgba(44, 28, 16, 0.30)";
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(695, fy + 43);
-    ctx.lineTo(1288, fy + 43);
+    ctx.moveTo(fx, fy + 50);
+    ctx.lineTo(fx + 520, fy + 50);
     ctx.stroke();
   });
 
-  // Worn oxidized crimson rubber stamp beside fields.
+  // Worn oxidized crimson rubber stamp.
   ctx.save();
-  ctx.translate(1165, 718);
-  ctx.rotate(-0.16);
-  ctx.strokeStyle = "rgba(104, 16, 18, 0.64)";
+  ctx.translate(1605, 628);
+  ctx.rotate(-0.14);
+  ctx.strokeStyle = "rgba(104, 16, 18, 0.70)";
   ctx.lineWidth = 4;
-  ctx.strokeRect(-115, -30, 230, 60);
-  ctx.fillStyle = "rgba(104, 16, 18, 0.68)";
-  ctx.font = "bold 24px 'Courier New', monospace";
+  ctx.strokeRect(-125, -32, 250, 64);
+  ctx.fillStyle = "rgba(104, 16, 18, 0.76)";
+  ctx.font = "bold 25px 'Courier New', monospace";
   ctx.textAlign = "center";
   ctx.fillText("ARCHIVED // 26", 0, 9);
   ctx.restore();
 
-  // Lower main biography section below the Polaroid.
-  ctx.strokeStyle = "rgba(38, 26, 17, 0.50)";
-  ctx.lineWidth = 2;
+  // Lower main biography section across full width below the Polaroid.
+  ctx.strokeStyle = "rgba(32, 22, 14, 0.55)";
+  ctx.lineWidth = 2.2;
   ctx.beginPath();
-  ctx.moveTo(118, 840);
-  ctx.lineTo(1288, 840);
+  ctx.moveTo(118, 725);
+  ctx.lineTo(1742, 725);
   ctx.stroke();
 
-  ctx.fillStyle = "rgba(52, 33, 19, 0.82)";
-  ctx.font = "bold 20px 'Courier New', monospace";
-  ctx.fillText("SUBJECT RECORD — BEHIND THE SCREEN", 118, 884);
+  ctx.fillStyle = "rgba(46, 28, 16, 0.88)";
+  ctx.font = "bold 24px 'Courier New', monospace";
+  ctx.fillText("SUBJECT RECORD — BEHIND THE SCREEN", 118, 772);
 
   const paragraphs = [
-    "I'm Luv Agarwal, born and bred in Kolkata, West Bengal. From a young age, I was fascinated by technology, networking, and how things work beneath the surface. As I grew, technology evolved alongside me at an exponential pace—and instead of watching it vanish ahead like a distant classmate, catching up to it became everything I could think about.",
-    "Until Class 12 at a private school in Howrah, all I knew was basic computing and school-level Java. Appearing for WBJEE and JEE Mains—and securing a seat at a top private college through my WBJEE rank—opened the door to real freedom: the space to explore and discover what truly sparks my adrenaline.",
-    "I started with web development from scratch and got hooked immediately—building around half a dozen websites and working with real-world clients for hands-on field experience. Application development came quickly next, built naturally on React and the languages I already spoke.",
-    "Now in my 2nd year of college, I've dipped my toes into cybersecurity—exploring OSINT, Google Dorks, and networking, and finding myself pulled deeper in. At the same time, an undeniable curiosity for electrical and hardware engineering lingers: I've loved robots and drones since childhood, even if I haven't stepped into building them yet.",
-    "The further I venture into the depths of engineering, the clearer one truth becomes—knowledge here is like trying to drink an ocean: an endless dark void of possibilities and things still waiting to be discovered.",
+    "I'm Luv Agarwal, born and bred in Kolkata, West Bengal. From a young age, I was fascinated by technology, networking, and how systems work beneath the surface. As I grew, technology evolved alongside me at an exponential pace—and instead of watching it vanish ahead like a distant classmate, catching up to it became my obsession.",
+    "Through Class 12 at a private school in Howrah, all I knew was basic computing and school-level Java. Cracking WBJEE alongside JEE Mains earned me a seat at a top private college—and the freedom to discover what truly spikes my adrenaline.",
+    "I learned web development from scratch, built half a dozen websites, and worked with real-world clients for true field experience—then quickly moved into app development with React. Now in my 2nd year, I've stepped into cybersecurity, diving into OSINT, Google Dorks, and networking.",
+    "Still, a restless curiosity for electrical and hardware engineering remains—robots and drones have fascinated me since childhood, even if I haven't built in that space yet. The deeper I go into engineering, the clearer it gets: knowledge here is like drinking an ocean—a vast, bottomless void of possibilities waiting to be discovered.",
   ];
 
   const drawWrapped = (text, startX, startY, maxWidth, lineHeight) => {
@@ -590,35 +582,34 @@ function makeRustyPaperMaps() {
     return y;
   };
 
-  ctx.fillStyle = "rgba(24, 17, 11, 0.91)";
-  ctx.font = "22px Georgia, serif";
-  let cursorY = 930;
+  ctx.fillStyle = "rgba(16, 11, 7, 0.96)";
+  ctx.font = "31px Georgia, serif";
+  let cursorY = 828;
   for (const para of paragraphs) {
-    cursorY = drawWrapped(para, 118, cursorY, 1164, 33);
-    cursorY += 14;
+    cursorY = drawWrapped(para, 118, cursorY, 1620, 44);
+    cursorY += 16;
   }
 
-  // Bottom index line & ink signature positioned safely below wrapped prose.
-  const footerLineY = Math.max(1535, cursorY + 12);
-  ctx.strokeStyle = "rgba(38, 26, 17, 0.35)";
-  ctx.lineWidth = 1.5;
+  const footerLineY = Math.max(1430, cursorY + 10);
+  ctx.strokeStyle = "rgba(32, 22, 14, 0.42)";
+  ctx.lineWidth = 1.8;
   ctx.beginPath();
   ctx.moveTo(118, footerLineY);
-  ctx.lineTo(1288, footerLineY);
+  ctx.lineTo(1742, footerLineY);
   ctx.stroke();
 
-  ctx.fillStyle = "rgba(44, 29, 17, 0.85)";
-  ctx.font = "bold 18px 'Courier New', monospace";
+  ctx.fillStyle = "rgba(38, 24, 14, 0.90)";
+  ctx.font = "bold 20px 'Courier New', monospace";
   ctx.fillText(
     "TRAIL: WEB DEV · APPS · REACT · CYBERSECURITY (OSINT / DORKS) · ROBOTICS & HARDWARE",
     118,
-    footerLineY + 42
+    footerLineY + 44
   );
 
-  ctx.fillStyle = "rgba(32, 20, 12, 0.80)";
-  ctx.font = "italic 32px Georgia, serif";
+  ctx.fillStyle = "rgba(22, 14, 8, 0.88)";
+  ctx.font = "italic 38px Georgia, serif";
   ctx.textAlign = "right";
-  ctx.fillText("— Luv Agarwal", 1272, Math.min(1685, footerLineY + 105));
+  ctx.fillText("— Luv Agarwal", 1726, Math.min(1538, footerLineY + 95));
   ctx.restore();
 
   const map = new THREE.CanvasTexture(cCanvas);
@@ -659,28 +650,28 @@ function makePolaroidMaps(onReady) {
   const rand = seededRand(7721);
 
   const renderFrame = (photoImg) => {
-    // 1. Old yellowed/pale/rusty Polaroid border stock.
+    // 1. Old yellowed/pale/rusty Polaroid border stock (muted ivory so light never blows it out).
     const borderGrad = ctx.createLinearGradient(0, 0, w, h);
-    borderGrad.addColorStop(0, "#cbc0a8");
-    borderGrad.addColorStop(0.55, "#bfb093");
-    borderGrad.addColorStop(1, "#a79473");
+    borderGrad.addColorStop(0, "#bfb196");
+    borderGrad.addColorStop(0.55, "#a79678");
+    borderGrad.addColorStop(1, "#8e7b5c");
     ctx.fillStyle = borderGrad;
     ctx.fillRect(0, 0, w, h);
 
-    // Matte cardstock in roughness map, glossy inside photo window.
-    rCtx.fillStyle = "#d8d8d8";
+    // Matte cardstock & low-glare aged photo paper so spotlights never wash out the face.
+    rCtx.fillStyle = "#efefef";
     rCtx.fillRect(0, 0, w, h);
     bCtx.fillStyle = "#808080";
     bCtx.fillRect(0, 0, w, h);
 
-    // Subtle rusty blotches & grime on white border.
+    // Subtle rusty blotches & grime on border.
     for (let i = 0; i < 35; i++) {
       const cx = rand() * w;
       const cy = rand() * h;
       const rad = 30 + rand() * 110;
       const g = ctx.createRadialGradient(cx, cy, 4, cx, cy, rad);
-      g.addColorStop(0, `rgba(112, 74, 38, ${0.06 + rand() * 0.10})`);
-      g.addColorStop(1, "rgba(112, 74, 38, 0)");
+      g.addColorStop(0, `rgba(104, 68, 32, ${0.07 + rand() * 0.11})`);
+      g.addColorStop(1, "rgba(104, 68, 32, 0)");
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.arc(cx, cy, rad, 0, Math.PI * 2);
@@ -691,7 +682,7 @@ function makePolaroidMaps(onReady) {
     for (let i = 0; i < 6000; i++) {
       const x = rand() * w;
       const y = rand() * h;
-      ctx.fillStyle = rand() > 0.5 ? "rgba(42,30,18,0.06)" : "rgba(255,244,220,0.05)";
+      ctx.fillStyle = rand() > 0.5 ? "rgba(42,30,18,0.06)" : "rgba(255,244,220,0.04)";
       ctx.fillRect(x, y, 2, 2);
     }
 
@@ -701,8 +692,8 @@ function makePolaroidMaps(onReady) {
     const pw = 768;
     const ph = 768;
 
-    // Glossy emulsion roughness inside photo square.
-    rCtx.fillStyle = "#484848";
+    // Matte-satin aged Polaroid emulsion (eliminates blinding white spotlight glare).
+    rCtx.fillStyle = "#cccccc";
     rCtx.fillRect(px, py, pw, ph);
 
     // Recessed inner shadow around photo frame.
@@ -733,42 +724,39 @@ function makePolaroidMaps(onReady) {
       ctx.rect(px, py, pw, ph);
       ctx.clip();
 
-      // Pale faded vintage chemical look via canvas filter.
-      ctx.filter = "saturate(0.46) contrast(0.88) brightness(0.95) sepia(0.32)";
+      // Toned-down vintage chemical grading so bright photo whites stay rich, pale, and clear.
+      ctx.filter = "saturate(0.44) contrast(1.16) brightness(0.74) sepia(0.36)";
       ctx.drawImage(photoImg, sx, sy, sw, sh, px, py, pw, ph);
       ctx.filter = "none";
 
-      // Pale milky shadow lift + aged warm tint.
-      ctx.fillStyle = "rgba(216, 200, 170, 0.16)";
-      ctx.fillRect(px, py, pw, ph);
-
-      ctx.fillStyle = "rgba(110, 74, 38, 0.14)";
+      // Subtle aged amber glaze (darkens hot highlights instead of washing them out).
+      ctx.fillStyle = "rgba(88, 60, 28, 0.14)";
       ctx.fillRect(px, py, pw, ph);
 
       // Analog lens vignette around square frame.
       const vig = ctx.createRadialGradient(
         px + pw * 0.5,
         py + ph * 0.46,
-        pw * 0.22,
+        pw * 0.24,
         px + pw * 0.5,
         py + ph * 0.5,
         pw * 0.72
       );
       vig.addColorStop(0, "rgba(0,0,0,0)");
-      vig.addColorStop(0.7, "rgba(22,16,10,0.22)");
-      vig.addColorStop(1, "rgba(14,10,6,0.62)");
+      vig.addColorStop(0.72, "rgba(22,16,10,0.20)");
+      vig.addColorStop(1, "rgba(14,10,6,0.58)");
       ctx.fillStyle = vig;
       ctx.fillRect(px, py, pw, ph);
 
       // Subtle analog emulsion scratches & grain inside photo.
       for (let i = 0; i < 4500; i++) {
-        ctx.fillStyle = rand() > 0.5 ? "rgba(255,240,210,0.038)" : "rgba(15,10,6,0.045)";
+        ctx.fillStyle = rand() > 0.5 ? "rgba(255,240,210,0.03)" : "rgba(15,10,6,0.045)";
         ctx.fillRect(px + rand() * pw, py + rand() * ph, 2, 2);
       }
       for (let i = 0; i < 14; i++) {
         const sx1 = px + rand() * pw;
         const sy1 = py + rand() * ph;
-        ctx.strokeStyle = "rgba(225, 208, 178, 0.14)";
+        ctx.strokeStyle = "rgba(225, 208, 178, 0.12)";
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(sx1, sy1);
@@ -952,7 +940,9 @@ export default function AboutView() {
   const mountRef = useRef(null);
   const cursorRef = useRef(null);
   const veilRef = useRef(null);
+  const zoomTargetRef = useRef(0);
   const [cursorHovered, setCursorHovered] = useState(false);
+  const [zoomed, setZoomed] = useState(false);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -967,10 +957,10 @@ export default function AboutView() {
     }
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x040303);
+    scene.background = new THREE.Color(0x060505);
 
-    const camera = new THREE.PerspectiveCamera(42, 1, 0.2, 40);
-    camera.position.set(0, 0, 9.2);
+    const camera = new THREE.PerspectiveCamera(40, 1, 0.2, 40);
+    camera.position.set(0, 0, 8.4);
     camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({
@@ -982,27 +972,27 @@ export default function AboutView() {
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.18;
+    renderer.toneMappingExposure = 1.08;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.domElement.className = "about-three-canvas";
     mount.appendChild(renderer.domElement);
 
-    // Subtle moody ambient illumination so the paper stays legible while keeping deep horror shadows.
-    const ambient = new THREE.AmbientLight(0xa39278, 0.22);
+    // Brighter warm ambient & fill illumination so all text & details are effortlessly clear while keeping horror shadows.
+    const ambient = new THREE.AmbientLight(0xc2b093, 0.48);
     scene.add(ambient);
 
-    const hemi = new THREE.HemisphereLight(0xc2ac86, 0x160d0e, 0.24);
+    const hemi = new THREE.HemisphereLight(0xdcc7a0, 0x241918, 0.42);
     scene.add(hemi);
 
     // Angled upper-left overhead lamp casting realistic diagonal shadows from the lifted Polaroid corner & clip-pin.
-    const rakingLamp = new THREE.SpotLight(0xffd7a3, 38, 22, 0.74, 0.86, 1.35);
-    rakingLamp.position.set(-3.4, 3.8, 5.0);
-    rakingLamp.target.position.set(-0.2, 0.3, 0);
+    const rakingLamp = new THREE.SpotLight(0xffdfa8, 36, 24, 0.85, 0.88, 1.25);
+    rakingLamp.position.set(-4.4, 4.2, 6.6);
+    rakingLamp.target.position.set(0, 0.2, 0);
     rakingLamp.castShadow = true;
     rakingLamp.shadow.mapSize.set(2048, 2048);
     rakingLamp.shadow.camera.near = 1.5;
-    rakingLamp.shadow.camera.far = 14;
+    rakingLamp.shadow.camera.far = 16;
     rakingLamp.shadow.bias = -0.00018;
     rakingLamp.shadow.normalBias = 0.008;
     rakingLamp.shadow.radius = 3.5;
@@ -1010,13 +1000,13 @@ export default function AboutView() {
     scene.add(rakingLamp.target);
 
     // Subtle atmospheric crimson practical glow in upper-left margin.
-    const redGlow = new THREE.PointLight(0x721218, 3.0, 11, 1.8);
-    redGlow.position.set(-4.6, 3.2, 1.8);
+    const redGlow = new THREE.PointLight(0x78151b, 2.8, 12, 1.8);
+    redGlow.position.set(-5.2, 3.2, 2.0);
     scene.add(redGlow);
 
-    // Interactive handheld flashlight tracking the cursor with smooth inertia.
-    const flashlight = new THREE.SpotLight(0xffe1b0, 68, 20, 0.38, 0.88, 1.4);
-    flashlight.position.set(-0.6, -1.0, 5.2);
+    // Interactive handheld flashlight tracking the cursor smoothly without washing out the photo.
+    const flashlight = new THREE.SpotLight(0xffe3b5, 44, 22, 0.42, 0.90, 1.35);
+    flashlight.position.set(-0.6, -1.0, 5.4);
     flashlight.castShadow = true;
     flashlight.shadow.mapSize.set(2048, 2048);
     flashlight.shadow.camera.near = 1.5;
@@ -1098,7 +1088,7 @@ export default function AboutView() {
       paperPosAttr.setZ(i, rz);
 
       // Pin weight: top-left (under clip-pin) & center spine are tightly anchored; outer corners flex freely.
-      const distTopLeft = Math.hypot(nx + 0.52, ny - 0.65);
+      const distTopLeft = Math.hypot(nx + 0.65, ny - 0.52);
       paperPinned[i] = clamp(1 - distTopLeft * 0.68, 0.08, 1);
     }
     paperGeo.computeVertexNormals();
@@ -1107,8 +1097,8 @@ export default function AboutView() {
     // 2. POLAROID PHOTO ON TOP-LEFT (LIFTED BOTTOM-RIGHT CORNER)
     // ---------------------------------------------------------
     const polaroidAnchor = new THREE.Group();
-    polaroidAnchor.position.set(-1.12, 1.50, 0.032);
-    polaroidAnchor.rotation.z = 0.048;
+    polaroidAnchor.position.set(-2.00, 1.36, 0.032);
+    polaroidAnchor.rotation.z = 0.045;
     docGroup.add(polaroidAnchor);
 
     const polaroidMaps = makePolaroidMaps();
@@ -1213,7 +1203,8 @@ export default function AboutView() {
     const hitPoint = new THREE.Vector3();
     const localHit = new THREE.Vector3();
 
-    let baseCamZ = 9.2;
+    let baseCamZ = 8.4;
+    let zoomCurrent = 0;
     let pointerSpeedX = 0;
     let pointerSpeedY = 0;
     let lastClientX = window.innerWidth * 0.5;
@@ -1246,8 +1237,8 @@ export default function AboutView() {
     const handlePointerMove = (event) => {
       const rect = renderer.domElement.getBoundingClientRect();
       if (!rect.width || !rect.height) return;
-      pointerNdc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      pointerNdc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      pointerNdc.x = clamp(((event.clientX - rect.left) / rect.width) * 2 - 1, -1, 1);
+      pointerNdc.y = clamp(-((event.clientY - rect.top) / rect.height) * 2 + 1, -1, 1);
 
       const dx = (event.clientX - lastClientX) / rect.width;
       const dy = (event.clientY - lastClientY) / rect.height;
@@ -1303,18 +1294,26 @@ export default function AboutView() {
       }
     };
 
+    const handleWheel = (event) => {
+      event.preventDefault();
+      const next = clamp(zoomTargetRef.current - event.deltaY * 0.0014, 0, 1);
+      zoomTargetRef.current = next;
+      const shouldBeZoomed = next > 0.25;
+      setZoomed((prev) => (prev === shouldBeZoomed ? prev : shouldBeZoomed));
+    };
+
     const resize = () => {
       const width = mount.clientWidth;
       const height = mount.clientHeight;
       if (!width || !height) return;
       const aspect = width / height;
       camera.aspect = aspect;
-      camera.fov = aspect < 0.9 ? 46 : 42;
+      camera.fov = aspect < 0.9 ? 46 : 40;
       camera.updateProjectionMatrix();
 
       const tanHalfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-      const distForH = 3.55 / tanHalfFov;
-      const distForW = 2.65 / (tanHalfFov * Math.max(aspect, 0.38));
+      const distForH = 3.05 / tanHalfFov;
+      const distForW = 3.45 / (tanHalfFov * Math.max(aspect, 0.42));
       baseCamZ = Math.max(distForH, distForW);
 
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
@@ -1324,8 +1323,9 @@ export default function AboutView() {
     const resizeObserver = new ResizeObserver(resize);
     resizeObserver.observe(mount);
     window.addEventListener("resize", resize);
-    renderer.domElement.addEventListener("pointermove", handlePointerMove, { passive: true });
+    window.addEventListener("pointermove", handlePointerMove, { passive: true });
     renderer.domElement.addEventListener("pointerdown", handlePointerDown, { passive: true });
+    renderer.domElement.addEventListener("wheel", handleWheel, { passive: false });
     resize();
 
     const cols = PAPER_SEG_X + 1;
@@ -1360,13 +1360,18 @@ export default function AboutView() {
 
       redGlow.intensity = 3.0 + Math.sin(elapsed * 6.5) * 0.28 + Math.sin(elapsed * 21) * 0.14;
 
-      // Subtle camera inspection tilt based on pointer offset.
-      const camTargetX = pointerNdc.x * 0.32;
-      const camTargetY = pointerNdc.y * 0.22;
+      // Smooth inspection zoom & wider pan while reading up close.
+      zoomCurrent += (zoomTargetRef.current - zoomCurrent) * Math.min(1, dt * 6.5);
+      const camTargetX = pointerNdc.x * (0.28 + zoomCurrent * 1.15);
+      const camTargetY = pointerNdc.y * (0.18 + zoomCurrent * 1.45);
       camera.position.x += (camTargetX - camera.position.x) * Math.min(1, dt * 6);
       camera.position.y += (camTargetY - camera.position.y) * Math.min(1, dt * 6);
-      camera.position.z = baseCamZ + (1 - entryEase) * 0.9;
-      camera.lookAt(0, -0.05, 0);
+      camera.position.z = baseCamZ * (1 - zoomCurrent * 0.42) + (1 - entryEase) * 0.9;
+      camera.lookAt(
+        camera.position.x * 0.65 * zoomCurrent,
+        -0.05 + camera.position.y * 0.72 * zoomCurrent,
+        0
+      );
 
       docGroup.rotation.z = -0.015 + (1 - entryEase) * 0.04;
       docGroup.position.y = -0.08 - (1 - entryEase) * 0.35;
@@ -1458,8 +1463,9 @@ export default function AboutView() {
       cancelAnimationFrame(frameId);
       resizeObserver.disconnect();
       window.removeEventListener("resize", resize);
-      renderer.domElement.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointermove", handlePointerMove);
       renderer.domElement.removeEventListener("pointerdown", handlePointerDown);
+      renderer.domElement.removeEventListener("wheel", handleWheel);
 
       scene.traverse((obj) => {
         if (obj.isMesh || obj.isPoints) {
@@ -1487,6 +1493,12 @@ export default function AboutView() {
       renderer.domElement.remove();
     };
   }, []);
+
+  const handleToggleZoom = () => {
+    const nextZoomed = !zoomed;
+    zoomTargetRef.current = nextZoomed ? 1 : 0;
+    setZoomed(nextZoomed);
+  };
 
   return (
     <main className="about-room">
@@ -1529,7 +1541,10 @@ export default function AboutView() {
       </header>
 
       <div className="about-hud-bottom">
-        <span>MOVE LIGHT TO EXAMINE · CLICK POLAROID OR PAPER TO TOUCH</span>
+        <span>MOVE LIGHT TO EXAMINE · SCROLL OR CLICK TO INSPECT</span>
+        <button type="button" className="hud-zoom-btn" onClick={handleToggleZoom}>
+          {zoomed ? "[- RESET VIEW]" : "[+ ZOOM CLOSER]"}
+        </button>
       </div>
 
       <div ref={veilRef} className="entry-veil" aria-hidden="true" />
@@ -1554,7 +1569,8 @@ export default function AboutView() {
         }
         @media (hover: hover) and (pointer: fine) {
           .about-room,
-          .about-room a {
+          .about-room a,
+          .about-room button {
             cursor: none;
           }
         }
@@ -1713,17 +1729,38 @@ export default function AboutView() {
         .about-hud-bottom {
           position: absolute;
           left: 50%;
-          bottom: 18px;
+          bottom: 16px;
           transform: translateX(-50%);
           z-index: 25;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          flex-wrap: wrap;
           width: max-content;
-          max-width: 92%;
+          max-width: 94%;
           text-align: center;
-          color: rgba(221, 207, 181, 0.64);
+          color: rgba(226, 212, 186, 0.72);
           font: 8px var(--font-geist-mono), monospace;
           letter-spacing: 1.5px;
           pointer-events: none;
           text-shadow: 0 2px 10px #000;
+        }
+        .hud-zoom-btn {
+          pointer-events: auto;
+          background: rgba(16, 12, 9, 0.72);
+          border: 1px solid rgba(186, 152, 108, 0.42);
+          border-radius: 3px;
+          padding: 4px 9px;
+          color: rgba(242, 226, 198, 0.9);
+          font: 8px var(--font-geist-mono), monospace;
+          letter-spacing: 1.4px;
+          transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease;
+        }
+        .hud-zoom-btn:hover {
+          border-color: rgba(218, 174, 118, 0.85);
+          background: rgba(34, 24, 16, 0.86);
+          color: #fff3dd;
         }
         .entry-veil {
           position: fixed;
@@ -1745,7 +1782,12 @@ export default function AboutView() {
           }
           .about-hud-bottom {
             font-size: 7px;
-            bottom: 12px;
+            bottom: 10px;
+            gap: 8px;
+          }
+          .hud-zoom-btn {
+            font-size: 7px;
+            padding: 3px 7px;
           }
         }
       `}</style>
