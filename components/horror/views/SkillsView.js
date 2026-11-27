@@ -359,13 +359,14 @@ function drawCrownCrest(ctx, mCtx, bCtx, cx, cy, scale = 1, chromeGrad) {
   if (bCtx) drawTo(bCtx, "#eaeaea", "#d4d4d4");
 }
 
-function drawSkillSigil(ctx, mCtx, bCtx, sigilType, cx, cy) {
+function drawSkillSigil(ctx, mCtx, bCtx, sigilType, cx, cy, scale = 1) {
   const chrome = makeChromeGrad(ctx, cx - 180, cy - 160, cx + 180, cy + 160, false);
   const warmChrome = makeChromeGrad(ctx, cx - 160, cy - 140, cx + 160, cy + 140, true);
 
   const renderArtwork = (tCtx, silverCol, goldCol, faintCol) => {
     tCtx.save();
     tCtx.translate(cx, cy);
+    tCtx.scale(scale, scale);
 
     // Subtle cosmic halo ring common to all three Royal Arcana cards.
     tCtx.strokeStyle = faintCol;
@@ -863,133 +864,130 @@ function makeTarotFrontTextures(skill, displayFont, bodyFont, maxAniso = 4) {
     roundRectPath(rCtx, 38, 38, w - 76, h - 76, 32);
     rCtx.stroke();
 
-    drawRoyalCorners(ctx, mCtx, bCtx, 74, 74, w - 148, h - 148, silverChrome);
+    drawRoyalCorners(ctx, mCtx, bCtx, 62, 62, w - 124, h - 124, silverChrome);
 
     // 2. Top Arcana numeral & subtitle strip.
-    ctx.fillStyle = "#d9d0bd";
+    ctx.fillStyle = "#efe6d3";
     ctx.font = `700 26px ${dispFont}, Georgia, serif`;
     ctx.textAlign = "left";
-    ctx.fillText(`TAROT · ${skill.numeral}`, 114, 114);
+    ctx.fillText(`TAROT · ${skill.numeral}`, 96, 98);
 
     ctx.textAlign = "right";
-    ctx.fillStyle = "rgba(212, 198, 170, 0.78)";
+    ctx.fillStyle = "rgba(232, 220, 196, 0.88)";
     ctx.font = `600 22px ${dispFont}, Georgia, serif`;
-    ctx.fillText(skill.code, w - 114, 114);
+    ctx.fillText(skill.code, w - 96, 98);
 
     ctx.textAlign = "center";
-    ctx.fillStyle = "#b8a888";
-    ctx.font = `600 20px ${dispFont}, Georgia, serif`;
-    ctx.fillText(skill.arcana, w * 0.5, 114);
+    ctx.fillStyle = "#d4c39e";
+    ctx.font = `600 21px ${dispFont}, Georgia, serif`;
+    ctx.fillText(skill.arcana, w * 0.5, 98);
 
-    // 3. Top Gothic Occult Illustration Sanctuary Arch.
-    const archX = 96;
-    const archY = 136;
-    const archW = w - 192;
-    const archH = 424;
+    // 3. Top Gothic Occult Illustration Sanctuary Arch (compact so typography stays commanding).
+    const archX = 68;
+    const archY = 114;
+    const archW = w - 136;
+    const archH = 266;
 
     ctx.save();
-    roundRectPath(ctx, archX, archY, archW, archH, 18);
+    roundRectPath(ctx, archX, archY, archW, archH, 16);
     const archGrad = ctx.createRadialGradient(
       w * 0.5,
-      archY + archH * 0.48,
-      20,
+      archY + archH * 0.5,
+      16,
       w * 0.5,
       archY + archH * 0.5,
-      archW * 0.65
+      archW * 0.58
     );
-    archGrad.addColorStop(0, "#1c202c");
-    archGrad.addColorStop(0.6, "#12141c");
-    archGrad.addColorStop(1, "#0a0b10");
+    archGrad.addColorStop(0, "#232838");
+    archGrad.addColorStop(0.65, "#151822");
+    archGrad.addColorStop(1, "#0b0d13");
     ctx.fillStyle = archGrad;
     ctx.fill();
     ctx.clip();
 
     // Subtle engraved geometric sunbeams inside dark sanctuary.
-    ctx.strokeStyle = "rgba(182, 188, 200, 0.08)";
-    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = "rgba(196, 204, 218, 0.12)";
+    ctx.lineWidth = 1.5;
     for (let r = 0; r < 18; r++) {
       const ang = (r / 18) * Math.PI * 2;
       ctx.beginPath();
       ctx.moveTo(w * 0.5, archY + archH * 0.52);
       ctx.lineTo(
-        w * 0.5 + Math.cos(ang) * 480,
-        archY + archH * 0.52 + Math.sin(ang) * 480
+        w * 0.5 + Math.cos(ang) * 440,
+        archY + archH * 0.52 + Math.sin(ang) * 440
       );
       ctx.stroke();
     }
 
-    drawCrownCrest(ctx, mCtx, bCtx, w * 0.5, archY + 46, 0.72, warmChrome);
-    drawSkillSigil(ctx, mCtx, bCtx, skill.sigil, w * 0.5, archY + archH * 0.55);
+    drawCrownCrest(ctx, mCtx, bCtx, w * 0.5, archY + 34, 0.58, warmChrome);
+    drawSkillSigil(ctx, mCtx, bCtx, skill.sigil, w * 0.5, archY + archH * 0.58, 0.66);
     ctx.restore();
 
     // Arch metallic frame border.
     ctx.strokeStyle = warmChrome;
     ctx.lineWidth = 3.2;
-    roundRectPath(ctx, archX, archY, archW, archH, 18);
+    roundRectPath(ctx, archX, archY, archW, archH, 16);
     ctx.stroke();
 
-    mCtx.strokeStyle = "#dcdcdc";
+    mCtx.strokeStyle = "#e6e6e6";
     mCtx.lineWidth = 3.2;
-    roundRectPath(mCtx, archX, archY, archW, archH, 18);
+    roundRectPath(mCtx, archX, archY, archW, archH, 16);
     mCtx.stroke();
 
-    rCtx.strokeStyle = "#565656";
+    rCtx.strokeStyle = "#525252";
     rCtx.lineWidth = 3.4;
-    roundRectPath(rCtx, archX, archY, archW, archH, 18);
+    roundRectPath(rCtx, archX, archY, archW, archH, 16);
     rCtx.stroke();
 
-    // 4. Lower Tarot Cartouche Plate: Tarot Heading Band + Highlighted Tech Stack + Crisp Reading Body.
-    // Dark royal engraved nameplate for the Tarot Skill Heading.
-    const headX = 96;
-    const headY = 582;
-    const headW = w - 192;
-    const headH = 148;
+    // 4. Engraved Royal Nameplate for Tarot Skill Heading (below illustration).
+    const headX = 68;
+    const headY = 396;
+    const headW = w - 136;
+    const headH = 142;
 
     const plateGrad = ctx.createLinearGradient(headX, headY, headX + headW, headY + headH);
-    plateGrad.addColorStop(0, "#191c24");
-    plateGrad.addColorStop(0.5, "#232630");
-    plateGrad.addColorStop(1, "#161820");
+    plateGrad.addColorStop(0, "#141720");
+    plateGrad.addColorStop(0.5, "#1f2330");
+    plateGrad.addColorStop(1, "#12141c");
     ctx.fillStyle = plateGrad;
     roundRectPath(ctx, headX, headY, headW, headH, 14);
     ctx.fill();
 
     ctx.strokeStyle = silverChrome;
-    ctx.lineWidth = 3.2;
+    ctx.lineWidth = 3.4;
     ctx.stroke();
-    ctx.strokeStyle = "rgba(182, 166, 132, 0.55)";
-    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = "rgba(210, 192, 150, 0.65)";
+    ctx.lineWidth = 1.6;
     roundRectPath(ctx, headX + 8, headY + 8, headW - 16, headH - 16, 10);
     ctx.stroke();
 
-    mCtx.strokeStyle = "#e4e4e4";
-    mCtx.lineWidth = 3.4;
+    mCtx.strokeStyle = "#eaeaea";
+    mCtx.lineWidth = 3.5;
     roundRectPath(mCtx, headX, headY, headW, headH, 14);
     mCtx.stroke();
 
-    // Tarot Heading in large authentic Cinzel display font.
+    // Large authentic Cinzel Tarot Heading in crisp bright ivory-platinum.
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     const isTwoLines = skill.titleLines.length > 1;
-    const titleFontSize = isTwoLines ? 44 : 54;
+    const titleFontSize = isTwoLines ? 50 : 62;
     ctx.font = `700 ${titleFontSize}px ${dispFont}, Georgia, serif`;
 
-    // Engraved dark bevel + bright silver-ivory letters.
     const drawTitleLine = (txt, ty) => {
-      ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+      ctx.fillStyle = "rgba(0, 0, 0, 0.9)";
       ctx.fillText(txt, w * 0.5 + 2, ty + 3);
-      ctx.fillStyle = "#f2ead9";
+      ctx.fillStyle = "#fff8ea";
       ctx.fillText(txt, w * 0.5, ty);
     };
 
     if (isTwoLines) {
-      drawTitleLine(skill.titleLines[0], headY + 51);
-      drawTitleLine(skill.titleLines[1], headY + 101);
+      drawTitleLine(skill.titleLines[0], headY + 47);
+      drawTitleLine(skill.titleLines[1], headY + 99);
     } else {
       drawTitleLine(skill.titleLines[0], headY + headH * 0.51);
     }
     ctx.textBaseline = "alphabetic";
 
-    // Rivets at left and right ends of heading banner.
     for (const rx of [headX + 34, headX + headW - 34]) {
       ctx.fillStyle = warmChrome;
       ctx.beginPath();
@@ -997,75 +995,70 @@ function makeTarotFrontTextures(skill, displayFont, bodyFont, maxAniso = 4) {
       ctx.fill();
     }
 
-    // 5. High-Contrast Aged Silver-Vellum Reading Tablet below the Heading.
-    const bodyBoxX = 96;
-    const bodyBoxY = 750;
-    const bodyBoxW = w - 192;
-    const bodyBoxH = 918;
+    // 5. High-Contrast Bright Bone-Parchment Reading Tablet below Heading.
+    const bodyBoxX = 68;
+    const bodyBoxY = 556;
+    const bodyBoxW = w - 136;
+    const bodyBoxH = 1116;
 
     const vellum = ctx.createRadialGradient(
       w * 0.5,
-      bodyBoxY + bodyBoxH * 0.48,
-      40,
+      bodyBoxY + bodyBoxH * 0.45,
+      60,
       w * 0.5,
       bodyBoxY + bodyBoxH * 0.5,
-      bodyBoxH * 0.68
+      bodyBoxH * 0.72
     );
-    vellum.addColorStop(0, "#e2dccf");
-    vellum.addColorStop(0.65, "#cfc6b4");
-    vellum.addColorStop(1, "#ada28e");
+    vellum.addColorStop(0, "#faf5e8");
+    vellum.addColorStop(0.7, "#efe6d3");
+    vellum.addColorStop(1, "#ddd0b8");
     ctx.fillStyle = vellum;
     roundRectPath(ctx, bodyBoxX, bodyBoxY, bodyBoxW, bodyBoxH, 16);
     ctx.fill();
 
-    // Subtle paper grain fibers inside vellum tablet only (matte roughness, zero glare).
+    // Very light tactile grain so edges feel artisanal while text contrast stays ultra sharp.
     ctx.save();
     roundRectPath(ctx, bodyBoxX, bodyBoxY, bodyBoxW, bodyBoxH, 16);
     ctx.clip();
-    for (let f = 0; f < 900; f++) {
+    for (let f = 0; f < 650; f++) {
       const fx = bodyBoxX + rand() * bodyBoxW;
       const fy = bodyBoxY + rand() * bodyBoxH;
-      ctx.fillStyle =
-        rand() > 0.5
-          ? `rgba(76, 62, 42, ${0.03 + rand() * 0.05})`
-          : `rgba(250, 245, 236, ${0.04 + rand() * 0.06})`;
-      ctx.fillRect(fx, fy, 1 + rand() * 5, 1 + rand() * 2);
+      ctx.fillStyle = `rgba(92, 74, 48, ${0.02 + rand() * 0.03})`;
+      ctx.fillRect(fx, fy, 1 + rand() * 4, 1 + rand() * 2);
     }
     ctx.restore();
 
-    // Matte high-roughness finish on reading tablet so overhead lights never wash out text!
-    rCtx.fillStyle = "#dfdfdf";
+    // Completely matte, non-metallic surface on reading tablet so lighting never glares out ink.
+    rCtx.fillStyle = "#ececec";
     roundRectPath(rCtx, bodyBoxX, bodyBoxY, bodyBoxW, bodyBoxH, 16);
     rCtx.fill();
-    mCtx.fillStyle = "#080808";
+    mCtx.fillStyle = "#000000";
     roundRectPath(mCtx, bodyBoxX, bodyBoxY, bodyBoxW, bodyBoxH, 16);
     mCtx.fill();
 
-    // Metallic border around reading tablet.
     ctx.strokeStyle = warmChrome;
-    ctx.lineWidth = 3.2;
+    ctx.lineWidth = 3.4;
     roundRectPath(ctx, bodyBoxX, bodyBoxY, bodyBoxW, bodyBoxH, 16);
     ctx.stroke();
 
-    ctx.strokeStyle = "rgba(42, 34, 24, 0.36)";
-    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = "rgba(42, 30, 18, 0.34)";
+    ctx.lineWidth = 1.6;
     roundRectPath(ctx, bodyBoxX + 12, bodyBoxY + 12, bodyBoxW - 24, bodyBoxH - 24, 10);
     ctx.stroke();
 
-    // 6. Highlighted Technologies / Tools Section inside top of tablet.
+    // 6. Highlighted Technologies / Tools Plaques.
     ctx.textAlign = "center";
-    ctx.fillStyle = "#4d3820";
-    ctx.font = `700 20px ${dispFont}, Georgia, serif`;
-    ctx.fillText("◆  CONFIDENT ARSENAL & CORE TOOLS  ◆", w * 0.5, bodyBoxY + 48);
+    ctx.fillStyle = "#3a2612";
+    ctx.font = `700 23px ${dispFont}, Georgia, serif`;
+    ctx.fillText("◆  CONFIDENT ARSENAL & CORE TOOLS  ◆", w * 0.5, bodyBoxY + 46);
 
-    // Measure & wrap pill chips cleanly centered inside bodyBoxW - 60.
-    const pillFont = `700 24px ${dispFont}, Arial, sans-serif`;
+    const pillFont = `700 28px ${dispFont}, Arial, sans-serif`;
     ctx.font = pillFont;
     const chipPadX = 22;
-    const chipH = 48;
+    const chipH = 54;
     const chipGapX = 14;
     const chipGapY = 14;
-    const maxRowW = bodyBoxW - 68;
+    const maxRowW = bodyBoxW - 60;
 
     const rows = [];
     let currentRow = [];
@@ -1087,20 +1080,19 @@ function makeTarotFrontTextures(skill, displayFont, bodyFont, maxAniso = 4) {
       rows.push({ items: currentRow, totalW: currentW });
     }
 
-    let chipY = bodyBoxY + 72;
+    let chipY = bodyBoxY + 68;
     for (const row of rows) {
       let curX = w * 0.5 - row.totalW * 0.5;
       for (const item of row.items) {
-        // Dark metallic iron plaque badge with warm tarnished bronze/silver border.
         const cg = ctx.createLinearGradient(curX, chipY, curX, chipY + chipH);
-        cg.addColorStop(0, "#242731");
-        cg.addColorStop(1, "#14161c");
+        cg.addColorStop(0, "#1d202a");
+        cg.addColorStop(1, "#0e1015");
         ctx.fillStyle = cg;
         roundRectPath(ctx, curX, chipY, item.width, chipH, 8);
         ctx.fill();
 
-        ctx.strokeStyle = warmChrome;
-        ctx.lineWidth = 2.2;
+        ctx.strokeStyle = "#b8a57a";
+        ctx.lineWidth = 2.4;
         ctx.stroke();
 
         mCtx.strokeStyle = "#dcdcdc";
@@ -1108,7 +1100,7 @@ function makeTarotFrontTextures(skill, displayFont, bodyFont, maxAniso = 4) {
         roundRectPath(mCtx, curX, chipY, item.width, chipH, 8);
         mCtx.stroke();
 
-        ctx.fillStyle = "#f4ecdc";
+        ctx.fillStyle = "#ffffff";
         ctx.font = pillFont;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
@@ -1120,18 +1112,17 @@ function makeTarotFrontTextures(skill, displayFont, bodyFont, maxAniso = 4) {
       chipY += chipH + chipGapY;
     }
 
-    // Ornamental divider between highlighted stack & body description.
     const divY = chipY + 12;
-    ctx.strokeStyle = "rgba(62, 46, 28, 0.35)";
-    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = "rgba(44, 30, 16, 0.36)";
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(bodyBoxX + 46, divY);
-    ctx.lineTo(w * 0.5 - 32, divY);
-    ctx.moveTo(w * 0.5 + 32, divY);
-    ctx.lineTo(bodyBoxX + bodyBoxW - 46, divY);
+    ctx.moveTo(bodyBoxX + 42, divY);
+    ctx.lineTo(w * 0.5 - 28, divY);
+    ctx.moveTo(w * 0.5 + 28, divY);
+    ctx.lineTo(bodyBoxX + bodyBoxW - 42, divY);
     ctx.stroke();
 
-    ctx.fillStyle = "#5a4226";
+    ctx.fillStyle = "#4d3419";
     ctx.beginPath();
     ctx.moveTo(w * 0.5, divY - 8);
     ctx.lineTo(w * 0.5 + 10, divY);
@@ -1140,20 +1131,20 @@ function makeTarotFrontTextures(skill, displayFont, bodyFont, maxAniso = 4) {
     ctx.closePath();
     ctx.fill();
 
-    // 7. Main Description Body (large high-contrast editorial serif, zero clipping).
-    const bodyStartX = bodyBoxX + 44;
-    const bodyMaxW = bodyBoxW - 88;
-    const bodyStartY = divY + 54;
+    // 7. Crisp High-Contrast Body Copy (large strong Georgia serif stems, pure dark ink).
+    const bodyStartX = bodyBoxX + 42;
+    const bodyMaxW = bodyBoxW - 84;
+    const bodyStartY = divY + 58;
     ctx.textAlign = "left";
-    ctx.fillStyle = "rgba(18, 16, 15, 0.96)";
-    ctx.font = `600 34px ${txtFont}, Georgia, serif`;
-    drawWrappedLines(ctx, skill.body, bodyStartX, bodyStartY, bodyMaxW, 50);
+    ctx.fillStyle = "#0b0a09";
+    ctx.font = `600 42px Georgia, ${txtFont}, serif`;
+    drawWrappedLines(ctx, skill.body, bodyStartX, bodyStartY, bodyMaxW, 58);
 
     // Subtle footer seal inside bottom border margin.
     ctx.textAlign = "center";
-    ctx.fillStyle = "rgba(218, 204, 178, 0.72)";
+    ctx.fillStyle = "rgba(230, 218, 194, 0.84)";
     ctx.font = `600 18px ${dispFont}, Georgia, serif`;
-    ctx.fillText("◆  LUV AGARWAL · HAND-FORGED SKILL ARCANA  ◆", w * 0.5, h - 72);
+    ctx.fillText("◆  LUV AGARWAL · HAND-FORGED SKILL ARCANA  ◆", w * 0.5, h - 54);
   };
 
   drawCardFace(displayFont, bodyFont);
@@ -1227,22 +1218,61 @@ function makeDustSprite() {
   return tex;
 }
 
+function makeStudioChromeEnv(renderer) {
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  pmrem.compileEquirectangularShader();
+
+  const w = 128;
+  const h = 64;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, "#3b4252");
+  grad.addColorStop(0.45, "#23252d");
+  grad.addColorStop(0.55, "#18130f");
+  grad.addColorStop(1, "#0b0908");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  const warmGlow = ctx.createRadialGradient(28, 22, 2, 28, 22, 26);
+  warmGlow.addColorStop(0, "rgba(255, 224, 174, 0.92)");
+  warmGlow.addColorStop(1, "rgba(255, 210, 140, 0)");
+  ctx.fillStyle = warmGlow;
+  ctx.fillRect(0, 0, 64, 52);
+
+  const silverStrip = ctx.createLinearGradient(58, 8, 114, 28);
+  silverStrip.addColorStop(0, "rgba(195, 210, 232, 0)");
+  silverStrip.addColorStop(0.5, "rgba(218, 230, 248, 0.78)");
+  silverStrip.addColorStop(1, "rgba(195, 210, 232, 0)");
+  ctx.fillStyle = silverStrip;
+  ctx.fillRect(58, 6, 56, 20);
+
+  const equirect = new THREE.CanvasTexture(canvas);
+  equirect.mapping = THREE.EquirectangularReflectionMapping;
+  equirect.colorSpace = THREE.SRGBColorSpace;
+
+  const envRT = pmrem.fromEquirectangular(equirect);
+  equirect.dispose();
+  pmrem.dispose();
+  return envRT;
+}
+
 export default function SkillsView({
   displayFontFamily = "Cinzel, Georgia, serif",
-  bodyFontFamily = "Cormorant Garamond, Georgia, serif",
+  bodyFontFamily = "Cormorant, Georgia, serif",
 }) {
   const mountRef = useRef(null);
   const cursorRef = useRef(null);
   const veilRef = useRef(null);
 
   const controlsRef = useRef({
-    switchCard: () => {},
-    selectCard: () => {},
     setZoom: () => {},
     toggleMacroZoom: () => {},
   });
 
-  const [activeIndex, setActiveIndex] = useState(0);
   const [zoomed, setZoomed] = useState(false);
   const [macroZoomed, setMacroZoomed] = useState(false);
   const [cursorHovered, setCursorHovered] = useState(false);
@@ -1263,7 +1293,7 @@ export default function SkillsView({
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x060505);
-    scene.fog = new THREE.FogExp2(0x070505, 0.042);
+    scene.fog = new THREE.FogExp2(0x070505, 0.012);
 
     const camera = new THREE.PerspectiveCamera(38, 1, 0.2, 50);
     const lookTarget = new THREE.Vector3(0, 0.04, 0.14);
@@ -1280,27 +1310,31 @@ export default function SkillsView({
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.12;
+    renderer.toneMappingExposure = 1.18;
     renderer.domElement.className = "skills-three-canvas";
     mount.appendChild(renderer.domElement);
 
+    const envRT = makeStudioChromeEnv(renderer);
+    scene.environment = envRT.texture;
+    scene.environmentIntensity = 0.85;
+
     const maxAniso = Math.min(8, renderer.capabilities.getMaxAnisotropy() || 4);
 
-    // Warm, balanced horror study lighting so wood grain, dull chrome, and text are always crisp.
-    const ambient = new THREE.AmbientLight(0xf3e8d4, 0.62);
+    // Bright, crisp study lighting so wood grain, dull chrome, and card ink stay effortlessly legible.
+    const ambient = new THREE.AmbientLight(0xf6ecda, 0.82);
     scene.add(ambient);
 
-    const hemi = new THREE.HemisphereLight(0xffeacc, 0x20150d, 0.54);
+    const hemi = new THREE.HemisphereLight(0xfff0d4, 0x24180f, 0.64);
     scene.add(hemi);
 
-    const keyLight = new THREE.SpotLight(0xffdfb0, 56, 26, 0.92, 0.85, 1.15);
-    keyLight.position.set(-4.2, 7.8, 3.8);
+    const keyLight = new THREE.SpotLight(0xffe4bd, 64, 28, 0.96, 0.85, 1.05);
+    keyLight.position.set(-4.0, 8.2, 4.0);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.set(2048, 2048);
     keyLight.shadow.camera.near = 1.5;
-    keyLight.shadow.camera.far = 20;
-    keyLight.shadow.bias = -0.00045;
-    keyLight.shadow.normalBias = 0.015;
+    keyLight.shadow.camera.far = 22;
+    keyLight.shadow.bias = -0.0003;
+    keyLight.shadow.normalBias = 0.004;
     keyLight.target.position.set(0, 0, 0.12);
     scene.add(keyLight);
     scene.add(keyLight.target);
@@ -1428,11 +1462,14 @@ export default function SkillsView({
       const frontMat = new THREE.MeshStandardMaterial({
         map: frontTex.map,
         bumpMap: frontTex.bumpMap,
-        bumpScale: 0.012,
+        bumpScale: 0.008,
         roughnessMap: frontTex.roughnessMap,
-        roughness: 0.86,
+        roughness: 0.9,
         metalnessMap: frontTex.metalnessMap,
-        metalness: 0.78,
+        metalness: 0.74,
+        emissiveMap: frontTex.map,
+        emissive: new THREE.Color(0xfbf2df),
+        emissiveIntensity: 0.36,
       });
 
       const outerGroup = new THREE.Group();
@@ -1447,7 +1484,7 @@ export default function SkillsView({
       const frontMesh = new THREE.Mesh(frontGeo, frontMat);
       frontMesh.position.z = CARD_THICK * 0.5 + 0.0008;
       frontMesh.castShadow = false;
-      frontMesh.receiveShadow = true;
+      frontMesh.receiveShadow = false;
       frontMesh.userData = { cardIndex: idx };
 
       const backMesh = new THREE.Mesh(backGeo, backMat);
@@ -1477,8 +1514,8 @@ export default function SkillsView({
     // Redraw card canvases once Google Fonts finish resolving.
     if (document.fonts && document.fonts.ready) {
       Promise.all([
-        document.fonts.load(`700 44px ${displayFontFamily}`).catch(() => null),
-        document.fonts.load(`600 34px ${bodyFontFamily}`).catch(() => null),
+        document.fonts.load(`700 50px ${displayFontFamily}`).catch(() => null),
+        document.fonts.load(`600 42px ${bodyFontFamily}`).catch(() => null),
         document.fonts.ready,
       ]).then(() => {
         if (disposed) return;
@@ -1601,7 +1638,6 @@ export default function SkillsView({
       const prevActive = activeIdx;
       const nextActive = (activeIdx + dir + n) % n;
       activeIdx = nextActive;
-      setActiveIndex(nextActive);
 
       const fromSlots = cards.map((card, idx) => ({
         x: card.outerGroup.position.x,
@@ -1654,20 +1690,7 @@ export default function SkillsView({
       cards[activeIdx].springVel += nextZoom ? 1.8 : -2.6;
     };
 
-    const selectSpecificCard = (targetIdx) => {
-      if (targetIdx === activeIdx) {
-        setZoomState(!isZoomed);
-        return;
-      }
-      const n = cards.length;
-      const forwardDist = (targetIdx - activeIdx + n) % n;
-      const backwardDist = (activeIdx - targetIdx + n) % n;
-      startSwitch(forwardDist <= backwardDist ? 1 : -1);
-    };
-
     controlsRef.current = {
-      switchCard: startSwitch,
-      selectCard: selectSpecificCard,
       setZoom: setZoomState,
       toggleMacroZoom: () => {
         if (!isZoomed) {
@@ -1704,12 +1727,12 @@ export default function SkillsView({
       camera.updateProjectionMatrix();
 
       const tanHalfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
-      const distH = 2.82 / tanHalfFov;
-      const distW = 3.32 / (tanHalfFov * Math.max(aspect, 0.42));
+      const distH = 2.15 / tanHalfFov;
+      const distW = 2.95 / (tanHalfFov * Math.max(aspect, 0.42));
       tableCamDist = Math.max(distH, distW);
 
-      const inspectH = 2.28 / tanHalfFov;
-      const inspectW = 1.32 / (tanHalfFov * Math.max(aspect, 0.42));
+      const inspectH = 1.92 / tanHalfFov;
+      const inspectW = 1.18 / (tanHalfFov * Math.max(aspect, 0.42));
       baseInspectDist = Math.max(inspectH, inspectW);
 
       // Update camera base orientation vector along normalized angle (0, 5.1, 4.1).
@@ -2056,13 +2079,13 @@ export default function SkillsView({
         ft.metalnessMap.dispose();
       });
       dustSprite.dispose();
+      envRT.dispose();
+      scene.environment = null;
 
       renderer.dispose();
       renderer.domElement.remove();
     };
   }, [displayFontFamily, bodyFontFamily]);
-
-  const activeSkill = SKILLS_CARDS[activeIndex] || SKILLS_CARDS[0];
 
   return (
     <main className="skills-room">
@@ -2110,47 +2133,12 @@ export default function SkillsView({
         </div>
       </header>
 
-      {/* Subtle left & right card-flip trigger buttons aligned neatly at screen sides */}
-      <button
-        type="button"
-        aria-label="Flip to previous skill tarot card"
-        className="side-flip-btn side-flip-left"
-        onClick={() => controlsRef.current.switchCard(-1)}
-      >
-        <span aria-hidden="true">‹</span>
-      </button>
-
-      <button
-        type="button"
-        aria-label="Flip to next skill tarot card"
-        className="side-flip-btn side-flip-right"
-        onClick={() => controlsRef.current.switchCard(1)}
-      >
-        <span aria-hidden="true">›</span>
-      </button>
-
       <div className="skills-hud-bottom">
-        <div className="card-pips" role="tablist" aria-label="Tarot skill cards">
-          {SKILLS_CARDS.map((card, i) => (
-            <button
-              key={card.id}
-              type="button"
-              role="tab"
-              aria-selected={activeIndex === i}
-              className={`card-pip ${activeIndex === i ? "is-active" : ""}`}
-              onClick={() => controlsRef.current.selectCard(i)}
-            >
-              <span>{card.numeral}</span>
-              <span className="pip-name">{card.titleLines[0]}</span>
-            </button>
-          ))}
-        </div>
-
         <div className="hud-actions-row">
           <span className="hud-hint">
             {zoomed
-              ? `READING ${activeSkill.numeral} · CLICK LEFT / RIGHT TO FLIP · CLICK CARD FOR TABLE`
-              : "CLICK CENTER CARD TO ZOOM · CLICK LEFT / RIGHT TO FLIP TAROT"}
+              ? "CLICK LEFT / RIGHT TO FLIP CARD · CLICK CARD FOR TABLE · SCROLL TO ZOOM"
+              : "CLICK CARD TO ZOOM · CLICK LEFT / RIGHT SIDE TO FLIP CARDS"}
           </span>
 
           <div className="hud-btn-group">
@@ -2361,39 +2349,10 @@ export default function SkillsView({
           background: #9f262e;
           box-shadow: 0 0 9px #b92a33;
         }
-        .side-flip-btn {
-          position: absolute;
-          top: 50%;
-          transform: translateY(-50%);
-          z-index: 24;
-          width: 44px;
-          height: 74px;
-          border-radius: 6px;
-          border: 1px solid rgba(182, 178, 168, 0.28);
-          background: rgba(14, 14, 18, 0.56);
-          color: rgba(224, 216, 198, 0.78);
-          font: 28px Georgia, serif;
-          display: grid;
-          place-items: center;
-          transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease,
-            transform 0.2s ease;
-        }
-        .side-flip-left {
-          left: 20px;
-        }
-        .side-flip-right {
-          right: 20px;
-        }
-        .side-flip-btn:hover {
-          border-color: rgba(212, 190, 142, 0.78);
-          background: rgba(24, 22, 26, 0.82);
-          color: #f8eed9;
-          transform: translateY(-50%) scale(1.06);
-        }
         .skills-hud-bottom {
           position: absolute;
           left: 50%;
-          bottom: 14px;
+          bottom: 16px;
           transform: translateX(-50%);
           z-index: 25;
           display: flex;
@@ -2401,37 +2360,8 @@ export default function SkillsView({
           align-items: center;
           gap: 8px;
           width: max-content;
-          max-width: 95%;
+          max-width: 94%;
           pointer-events: none;
-        }
-        .card-pips {
-          pointer-events: auto;
-          display: flex;
-          gap: 6px;
-          flex-wrap: wrap;
-          justify-content: center;
-        }
-        .card-pip {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 4px 10px;
-          border-radius: 3px;
-          border: 1px solid rgba(176, 172, 162, 0.24);
-          background: rgba(12, 12, 15, 0.72);
-          color: rgba(216, 206, 188, 0.65);
-          font: 8px var(--font-geist-mono), monospace;
-          letter-spacing: 1.2px;
-          transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
-        }
-        .card-pip.is-active {
-          border-color: rgba(206, 182, 134, 0.76);
-          background: rgba(26, 23, 20, 0.88);
-          color: #f4ebd8;
-        }
-        .card-pip:hover {
-          border-color: rgba(214, 188, 138, 0.6);
-          color: #efe2cb;
         }
         .hud-actions-row {
           display: flex;
@@ -2441,7 +2371,7 @@ export default function SkillsView({
           flex-wrap: wrap;
         }
         .hud-hint {
-          color: rgba(226, 212, 186, 0.7);
+          color: rgba(226, 212, 186, 0.72);
           font: 8px var(--font-geist-mono), monospace;
           letter-spacing: 1.4px;
           text-shadow: 0 2px 10px #000;
@@ -2484,20 +2414,6 @@ export default function SkillsView({
           .hud-nav {
             order: 3;
             width: 100%;
-          }
-          .side-flip-btn {
-            width: 34px;
-            height: 54px;
-            font-size: 22px;
-          }
-          .side-flip-left {
-            left: 8px;
-          }
-          .side-flip-right {
-            right: 8px;
-          }
-          .pip-name {
-            display: none;
           }
           .hud-hint {
             font-size: 7px;
