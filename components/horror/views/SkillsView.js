@@ -1295,7 +1295,7 @@ export default function SkillsView({
     scene.background = new THREE.Color(0x060505);
     scene.fog = new THREE.FogExp2(0x070505, 0.012);
 
-    const camera = new THREE.PerspectiveCamera(38, 1, 0.2, 50);
+    const camera = new THREE.PerspectiveCamera(40, 1, 0.15, 50);
     const lookTarget = new THREE.Vector3(0, 0.04, 0.14);
     const camAnchor = new THREE.Vector3(0, 5.4, 4.4);
     camera.position.copy(camAnchor);
@@ -1582,7 +1582,7 @@ export default function SkillsView({
         // Right card underneath, face DOWN!
         return {
           x: 1.66,
-          y: 0.042,
+          y: 0.052,
           z: 0.16,
           yaw: -0.17,
           pitch: -Math.PI * 0.5,
@@ -1593,7 +1593,7 @@ export default function SkillsView({
         // Left card underneath, face DOWN!
         return {
           x: -1.66,
-          y: 0.022,
+          y: 0.024,
           z: 0.15,
           yaw: 0.17,
           pitch: -Math.PI * 0.5,
@@ -1604,7 +1604,7 @@ export default function SkillsView({
       const wingSide = offset <= n * 0.5 ? 1 : -1;
       return {
         x: wingSide * 2.15,
-        y: 0.012,
+        y: 0.018,
         z: 0.14,
         yaw: -wingSide * 0.24,
         pitch: -Math.PI * 0.5,
@@ -1723,16 +1723,17 @@ export default function SkillsView({
       if (!width || !height) return;
       const aspect = width / height;
       camera.aspect = aspect;
-      camera.fov = aspect < 0.9 ? 46 : 38;
+      camera.fov = aspect < 0.9 ? 46 : 40;
       camera.updateProjectionMatrix();
 
       const tanHalfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
-      const distH = 2.15 / tanHalfFov;
-      const distW = 2.95 / (tanHalfFov * Math.max(aspect, 0.42));
+      const distH = 2.75 / tanHalfFov;
+      const distW = 3.25 / (tanHalfFov * Math.max(aspect, 0.42));
       tableCamDist = Math.max(distH, distW);
 
-      const inspectH = 1.92 / tanHalfFov;
-      const inspectW = 1.18 / (tanHalfFov * Math.max(aspect, 0.42));
+      // Bring first-click inspection close to the screen (large, vivid, clear of table).
+      const inspectH = 1.88 / tanHalfFov;
+      const inspectW = 1.24 / (tanHalfFov * Math.max(aspect, 0.42));
       baseInspectDist = Math.max(inspectH, inspectW);
 
       // Update camera base orientation vector along normalized angle (0, 5.1, 4.1).
@@ -1863,6 +1864,19 @@ export default function SkillsView({
     const inspectWorld = new THREE.Vector3();
     const restWorld = new THREE.Vector3();
 
+    const enforceTableClearance = (card, minClearance = 0.014) => {
+      card.outerGroup.updateMatrixWorld(true);
+      const e = card.flipGroup.matrixWorld.elements;
+      const downReach =
+        Math.abs(e[1]) * (CARD_W * 0.5) +
+        Math.abs(e[5]) * (CARD_H * 0.5) +
+        Math.abs(e[9]) * (CARD_THICK * 0.5);
+      const minY = downReach + minClearance;
+      if (card.outerGroup.position.y < minY) {
+        card.outerGroup.position.y = minY;
+      }
+    };
+
     const animate = (now) => {
       const dt = Math.min((now - prevTime) / 1000, 0.032);
       prevTime = now;
@@ -1890,12 +1904,12 @@ export default function SkillsView({
 
       // Smooth zoom and macro-inspection transitions.
       const zoomGoal = isZoomed ? 1 : 0;
-      zoomProgress += (zoomGoal - zoomProgress) * Math.min(1, dt * 6.5);
+      zoomProgress += (zoomGoal - zoomProgress) * Math.min(1, dt * 6.8);
       macroProgress += (macroTarget - macroProgress) * Math.min(1, dt * 6.5);
 
-      // Gentle camera parallax & entrance push-in.
+      // Keep camera high enough above table during inspection so zoomed card floats far above oak planks.
       const dynamicCamDist =
-        tableCamDist * (1 - zoomProgress * 0.05) + (1 - entryEase) * 1.35;
+        tableCamDist * (1 - zoomProgress * 0.02) + (1 - entryEase) * 1.35;
       camBaseTemp.copy(lookTarget).addScaledVector(tableDirNorm, dynamicCamDist);
       camera.position.x = camBaseTemp.x + pointerNdc.x * 0.24;
       camera.position.y = camBaseTemp.y + pointerNdc.y * 0.14;
@@ -1946,8 +1960,8 @@ export default function SkillsView({
         }
 
         const bell = Math.sin(rawT * Math.PI);
-        arcLiftOld = bell * 0.42;
-        arcLiftNew = bell * 1.18;
+        arcLiftOld = bell * 0.68;
+        arcLiftNew = bell * 1.24;
         flipSwell = bell * Math.exp(-rawT * 0.8) * 0.14;
 
         if (switchAnim.t >= 1) {
@@ -1957,14 +1971,14 @@ export default function SkillsView({
         }
       }
 
-      // Compute zoomed inspection target perch floating cleanly perpendicular in front of camera.
-      const activeDist = baseInspectDist * (1 - macroProgress * 0.36);
-      const panScale = 0.08 + macroProgress * 0.92;
+      // Compute close-up inspection perch hovering cleanly near viewer and well above tabletop.
+      const activeDist = baseInspectDist * (1 - macroProgress * 0.30);
+      const panScale = 0.22 + macroProgress * 0.78;
       inspectWorld
         .copy(camera.position)
         .addScaledVector(camForward, activeDist)
-        .addScaledVector(camRight, -pointerNdc.x * macroProgress * 0.55)
-        .addScaledVector(camUp, -0.05 - pointerNdc.y * macroProgress * 0.95);
+        .addScaledVector(camRight, -pointerNdc.x * (0.06 + macroProgress * 0.45))
+        .addScaledVector(camUp, -0.05 - pointerNdc.y * (0.16 + macroProgress * 0.75));
 
       for (let i = 0; i < cards.length; i++) {
         const card = cards[i];
@@ -1990,7 +2004,7 @@ export default function SkillsView({
           const bell = switchAnim.active ? Math.sin(switchAnim.t * Math.PI) : 0;
           if (zoomProgress > 0.04) {
             worldX = THREE.MathUtils.lerp(pose.x, worldX - switchAnim.dir * 0.32, bell * 0.5);
-            worldY += arcLiftOld * 0.75;
+            worldY += arcLiftOld * 0.85;
             worldZ += bell * 0.36;
           } else {
             worldY += arcLiftOld;
@@ -2002,21 +2016,25 @@ export default function SkillsView({
 
         if (isActiveCard && zoomProgress > 0.001) {
           restWorld.set(worldX, worldY, worldZ);
-          // When incoming flips up into zoom, blend smoothly from its wing pose directly to reading perch.
+          // Lead lift height before upright tilt so card clears above stack & never clips tabletop.
           const zEase = zoomProgress * zoomProgress * (3 - 2 * zoomProgress);
           const flightMix = zEase * (isIncomingCard ? switchEaseT : 1);
+          const liftPosMix = 1 - Math.pow(1 - flightMix, 2.15);
+          const liftRotMix = flightMix * flightMix * (3 - 2 * flightMix);
+          const liftBumpY = Math.sin(flightMix * Math.PI) * 0.44;
           const arcOut = isIncomingCard ? Math.sin(switchAnim.t * Math.PI) * 0.42 : 0;
 
-          card.outerGroup.position.lerpVectors(restWorld, inspectWorld, flightMix);
+          card.outerGroup.position.lerpVectors(restWorld, inspectWorld, liftPosMix);
+          card.outerGroup.position.y += liftBumpY;
           card.outerGroup.position.addScaledVector(camForward, -arcOut);
-          card.outerGroup.rotation.y = THREE.MathUtils.lerp(yawY, 0, flightMix);
+          card.outerGroup.rotation.y = THREE.MathUtils.lerp(yawY, 0, liftRotMix);
 
           const handTiltX = pointerNdc.y * (0.045 * panScale) * flightMix;
           const handTiltY = pointerNdc.x * (0.065 * panScale) * flightMix;
           card.pitchGroup.rotation.x = THREE.MathUtils.lerp(
             pitchX,
             camPitch + handTiltX,
-            flightMix
+            liftRotMix
           );
           card.flipGroup.rotation.y = flipY + handTiltY;
           card.flipGroup.rotation.x =
@@ -2030,6 +2048,9 @@ export default function SkillsView({
           card.flipGroup.rotation.y = flipY;
           card.flipGroup.rotation.x = 0;
         }
+
+        // Physical tabletop floor guard so no card edge ever passes through wooden desk (y = 0).
+        enforceTableClearance(card, isActiveCard && zoomProgress < 0.15 ? 0.055 : 0.014);
       }
 
       // Drift ambient dust specks softly through candlelit air.
